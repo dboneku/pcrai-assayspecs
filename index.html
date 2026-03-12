@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>pcr.ai | Assay Configuration Console</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        brand: {
+                            dark: '#020617',
+                            slate: '#1e293b',
+                            blue: '#3b82f6',
+                            teal: '#0d9488',
+                            accent: '#2dd4bf',
+                            bg: '#f8fafc'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .sidebar-item-active {
+            background: #f1f5f9;
+            border-right: 4px solid #3b82f6;
+            color: #1e293b;
+        }
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Removed input-premium and label-premium as they are now inlined */
+    </style>
+</head>
+
+<body class="bg-brand-bg text-slate-900 font-sans h-screen flex flex-col overflow-hidden">
+
+    <!-- Top Navigation -->
+    <header class="h-16 bg-brand-dark text-white px-6 flex justify-between items-center shrink-0 z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-accent to-brand-blue flex items-center justify-center font-bold text-brand-dark shadow-lg shadow-blue-500/20">
+                AI
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">pcr.ai <span class="text-brand-accent/80 font-medium px-2 border-l border-white/20 ml-2">Assay Console</span></h1>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="exportJSON()" class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10">JSON Export</button>
+            <button onclick="exportToExcel()" class="px-4 py-2 text-sm font-semibold bg-brand-blue hover:bg-blue-600 rounded-lg shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Excel Sheet
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Sidebar: Assay List -->
+        <aside class="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Mix / Assay List</span>
+                <button onclick="createNewAssay()" class="p-1 px-2 text-xs font-bold bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white rounded transition-all">+ NEW</button>
+            </div>
+            <div id="assay-list" class="flex-1 overflow-y-auto py-2">
+                <!-- Dynamically populated -->
+            </div>
+            <div class="p-4 border-t border-slate-100">
+                <button onclick="clearAllData()" class="w-full py-2 text-xs text-red-500 hover:bg-red-50 rounded transition-colors text-center font-medium">Clear Console Cache</button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <section id="workspace" class="flex-1 flex flex-col overflow-hidden relative">
+            <!-- Empty State -->
+            <div id="empty-state" class="absolute inset-0 flex items-center justify-center bg-brand-bg z-10">
+                <div class="text-center">
+                    <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                    <h3 class="text-slate-600 font-semibold text-lg">No Assay Selected</h3>
+                    <p class="text-slate-400 text-sm max-w-xs mt-2">Select an assay from the sidebar or create a new one to begin configuration.</p>
+                </div>
+            </div>
+
+            <!-- Active Assay Header -->
+            <div id="assay-header" class="px-8 pt-6 pb-2 shrink-0 bg-white border-b border-slate-200 hidden">
+                <div class="flex justify-between items-start mb-6">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h2 id="active-assay-name" class="text-2xl font-bold text-slate-800">Assay Name</h2>
+                            <span id="active-assay-id" class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded uppercase">ID001</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Configure parameters, targets, and validity rules.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="deleteCurrentAssay()" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all" title="Delete Assay">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex gap-8">
+                    <button id="tab-general" onclick="switchTab('general')" class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">General Specs</button>
+                    <button id="tab-targets" onclick="switchTab('targets')" class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Targets</button>
+                    <button id="tab-controls" onclick="switchTab('controls')" class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">QC & Controls</button>
+                    <button id="tab-rules" onclick="switchTab('rules')" class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Outcome Rules</button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div id="assay-content" class="flex-1 overflow-y-auto px-8 py-6 hidden">
+                <!-- Tab: General -->
+                <div id="panel-general" class="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div class="grid grid-cols-3 gap-6">
+                        <div class="col-span-2 space-y-6">
+                            <div class="glass-panel p-6 rounded-xl space-y-4">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h4 class="text-sm font-bold text-brand-blue flex items-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                                        Validity Configuration
+                                    </h4>
+                                    <div class="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                                        <button onclick="setAssayMode('qual')" id="mode-qual" class="px-3 py-1 text-[10px] font-bold rounded transition-all">QUAL</button>
+                                        <button onclick="setAssayMode('quant')" id="mode-quant" class="px-3 py-1 text-[10px] font-bold rounded transition-all">QUANT</button>
+                                    </div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sample Type(s) (Optional)</label>
+                                        <div class="flex gap-2">
+                                            <select id="sel-sample-type" class="flex-1 bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm">
+                                                <option value="">Select Type...</option>
+                                                <option value="Plasma">Plasma</option>
+                                                <option value="Serum">Serum</option>
+                                                <option value="Whole Blood">Whole Blood</option>
+                                                <option value="Swab (Nasopharyngeal)">Swab (Nasopharyngeal)</option>
+                                                <option value="Swab (Oropharyngeal)">Swab (Oropharyngeal)</option>
+                                                <option value="Sputum">Sputum</option>
+                                                <option value="Urine">Urine</option>
+                                                <option value="Stool">Stool</option>
+                                                <option value="CSF">CSF</option>
+                                                <option value="BAL">BAL</option>
+                                                <option value="Amniotic Fluid">Amniotic Fluid</option>
+                                                <option value="Saliva">Saliva</option>
+                                            </select>
+                                            <button onclick="addSampleType()" class="px-3 py-2 bg-brand-blue text-white text-xs font-bold rounded-md hover:bg-blue-600 transition-all shadow-md shadow-blue-500/20">ADD</button>
+                                        </div>
+                                        <div id="sample-type-tags" class="flex flex-wrap gap-2 mt-3 min-h-[32px]">
+                                            <!-- Tags will be rendered here -->
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Test Code</label>
+                                        <input type="text" id="inp-test-code" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" placeholder="LIMS Code" oninput="captureGeneral()">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Analysis Threshold</label>
+                                        <input type="number" id="inp-eval-threshold" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" placeholder="0.2" oninput="captureGeneral()">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Max Instrument Cycles</label>
+                                        <input type="number" id="inp-max-cycles" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" placeholder="45" oninput="captureGeneral()">
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-6 pt-2">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <div class="relative">
+                                            <input type="checkbox" id="chk-inhibition" class="sr-only peer" checked onchange="captureGeneral()">
+                                            <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-blue"></div>
+                                        </div>
+                                        <span class="text-sm font-medium text-slate-700">IC Inhibition Check (Ct < 35)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="quant-settings-container" class="glass-panel p-6 rounded-xl space-y-4">
+                                <h4 class="text-sm font-bold text-brand-teal flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                                    Quantitative Settings
+                                </h4>
+                                <div class="flex gap-4 p-1 bg-slate-100 rounded-lg w-fit mb-4">
+                                    <button onclick="setQuantMode('stored')" id="btn-quant-stored" class="px-4 py-1.5 text-xs font-bold rounded-md transition-all">Stored Formula</button>
+                                    <button onclick="setQuantMode('plate')" id="btn-quant-plate" class="px-4 py-1.5 text-xs font-bold rounded-md transition-all">Per-Plate Standard Curve</button>
+                                </div>
+                                <div id="quant-stored-fields" class="grid grid-cols-3 gap-4">
+                                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Slope</label><input type="number" id="inp-slope" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" oninput="captureGeneral()"></div>
+                                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Intercept</label><input type="number" id="inp-intercept" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" oninput="captureGeneral()"></div>
+                                    <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Min R²</label><input type="number" id="inp-r2" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" placeholder="0.99" oninput="captureGeneral()"></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Result Units</label>
+                                        <select id="sel-units" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" onchange="captureGeneral()">
+                                            <option value="copies/mL">copies/mL</option>
+                                            <option value="IU/mL">IU/mL</option>
+                                            <option value="copies/uL">copies/uL</option>
+                                            <option value="Log10 copies/mL">Log10 copies/mL</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Rounding</label>
+                                        <select id="sel-rounding" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" onchange="captureGeneral()">
+                                            <option value="none">No Rounding</option>
+                                            <option value="1sf">Rounding to 1 SF</option>
+                                            <option value="2sf">Rounding to 2 SF</option>
+                                            <option value="3sf">Rounding to 3 SF</option>
+                                            <option value="sci">Scientific Format</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="space-y-6">
+                            <div class="glass-panel p-6 rounded-xl space-y-4">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Plate Metadata</h4>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Default Plate Size</label>
+                                    <select class="w-full bg-slate-100 border border-slate-200 rounded-md px-3 py-2 text-sm cursor-not-allowed" disabled>
+                                        <option>96-well Plate</option>
+                                    </select>
+                                </div>
+                                <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg">
+                                    <p class="text-[11px] text-blue-600 leading-relaxed">
+                                        <span class="font-bold">Info:</span> Cross-contamination rules utilize this geometry to calculate adjacency automatically.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Targets -->
+                <div id="panel-targets" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-lg font-bold text-slate-800">Assay Targets</h4>
+                        <button onclick="addTarget()" class="px-4 py-2 bg-brand-blue text-white text-xs font-bold rounded-lg shadow-md hover:bg-blue-600 transition-all">+ Add Target</button>
+                    </div>
+                    <div id="targets-list" class="grid grid-cols-1 gap-4">
+                        <!-- Targets mapping -->
+                    </div>
+                </div>
+
+                <!-- Tab: Controls -->
+                <div id="panel-controls" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div class="flex justify-between items-center">
+                        <h4 class="text-lg font-bold text-slate-800">Quality Controls</h4>
+                        <button onclick="addControl()" class="px-4 py-2 bg-brand-teal text-white text-xs font-bold rounded-lg shadow-md hover:bg-teal-700 transition-all">+ Add Control</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-6">
+                        <div class="col-span-2 space-y-4" id="controls-list">
+                            <!-- Controls mapping -->
+                        </div>
+                        <div class="space-y-4">
+                            <div class="glass-panel p-6 rounded-xl space-y-4">
+                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest">Westgard Configuration</h4>
+                                <div class="space-y-3">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" class="w-4 h-4 text-brand-blue rounded border-slate-300" checked id="wg-12s" onchange="captureRulesPref()">
+                                        <span class="text-sm text-slate-700">1-2s Warning</span>
+                                    </label>
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" class="w-4 h-4 text-brand-blue rounded border-slate-300" checked id="wg-22s" onchange="captureRulesPref()">
+                                        <span class="text-sm text-slate-700">2-2s Error</span>
+                                    </label>
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" class="w-4 h-4 text-brand-blue rounded border-slate-300" checked id="wg-13s" onchange="captureRulesPref()">
+                                        <span class="text-sm text-slate-700">1-3s Error</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Rules -->
+                <div id="panel-rules" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="text-lg font-bold text-slate-800">Outcome Evaluation Rules</h4>
+                            <p class="text-xs text-slate-400 mt-1">Define how target flags combine into a final assay outcome.</p>
+                        </div>
+                        <button onclick="addRule()" class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-md hover:bg-slate-900 transition-all">+ New Rule</button>
+                    </div>
+                    <div id="rules-list" class="space-y-3">
+                        <!-- Rules -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm hidden z-[100] flex items-center justify-center p-6">
+        <div id="rule-builder-modal" class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden hidden transform transition-all">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Expression Builder</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div class="p-8 space-y-6">
+                <div class="space-y-4">
+                    <label class="label-premium">Outcome Message / UI Label</label>
+                    <input type="text" id="rule-out-name" class="input-premium" placeholder="e.g. POSITIVE">
+                    
+                    <div class="pt-4 space-y-4">
+                        <label class="label-premium">Logical Expression</label>
+                        <div id="expression-rows" class="space-y-2">
+                            <!-- Rule rows -->
+                        </div>
+                        <button onclick="addExprRow()" class="text-[11px] font-bold text-brand-blue hover:underline">+ ADD CONDITION</button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 flex justify-end gap-3">
+                <button onclick="closeModal()" class="px-6 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
+                <button onclick="saveRule()" class="px-8 py-2 text-sm font-bold bg-brand-blue text-white rounded-lg shadow-lg shadow-blue-500/30">Save Rule</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Core Data Structure
+        let state = JSON.parse(localStorage.getItem('pcr_console_v2')) || {
+            assays: {}
+        };
+
+        let activeAssayId = null;
+        let currentTab = 'general';
+        let editingRuleIdx = null;
+
+        function saveState() {
+            localStorage.setItem('pcr_console_v2', JSON.stringify(state));
+            renderSidebar();
+        }
+
+        // --- Navigation ---
+        function renderSidebar() {
+            const list = document.getElementById('assay-list');
+            list.innerHTML = '';
+            
+            Object.values(state.assays).forEach(assay => {
+                const btn = document.createElement('button');
+                btn.className = `w-full px-5 py-4 text-left flex flex-col gap-1 transition-all ${activeAssayId === assay.id ? 'sidebar-item-active' : 'hover:bg-slate-50 text-slate-600'}`;
+                btn.onclick = () => selectAssay(assay.id);
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = "flex justify-between items-center";
+                nameDiv.innerHTML = `<span class="font-bold text-sm">${assay.name}</span> <span class="text-[9px] text-slate-400 font-bold">${assay.id}</span>`;
+                
+                const sampleTypes = Array.isArray(assay.general?.sampleType) ? assay.general.sampleType.join(', ') : (assay.general?.sampleType || 'No Type');
+                const metaDiv = document.createElement('div');
+                metaDiv.className = "text-[10px] text-slate-400 font-medium truncate";
+                metaDiv.innerText = `${Object.keys(assay.targets || {}).length} Targets • ${sampleTypes}`;
+                
+                btn.appendChild(nameDiv);
+                btn.appendChild(metaDiv);
+                list.appendChild(btn);
+            });
+        }
+
+        function createNewAssay() {
+            const id = 'A-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+            const name = prompt("Enter Assay Name:");
+            if (!name) return;
+
+            state.assays[id] = {
+                id: id,
+                name: name,
+                general: { assayMode: 'qual', sampleType: [], testCode: '', evalThreshold: 0.2, maxCycles: 45, inhibition: true, quantMode: 'stored', units: 'copies/mL', rounding: 'none', slope: -3.3, intercept: 40, r2: 0.99 },
+                targets: {},
+                controls: {},
+                rules: [],
+                westgard: { s12: true, s22: true, s13: true }
+            };
+            
+            activeAssayId = id;
+            saveState();
+            selectAssay(id);
+        }
+
+        function selectAssay(id) {
+            activeAssayId = id;
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('assay-header').classList.remove('hidden');
+            document.getElementById('assay-content').classList.remove('hidden');
+            
+            const assay = state.assays[id];
+            document.getElementById('active-assay-name').innerText = assay.name;
+            document.getElementById('active-assay-id').innerText = assay.id;
+
+            renderSidebar();
+            switchTab(currentTab);
+            fillGeneralForm();
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            ['general', 'targets', 'controls', 'rules'].forEach(t => {
+                document.getElementById(`panel-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+                document.getElementById(`tab-${t}`).classList.add('text-slate-400');
+            });
+            document.getElementById(`panel-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            document.getElementById(`tab-${tab}`).classList.remove('text-slate-400');
+
+            if (tab === 'targets') renderTargets();
+            if (tab === 'controls') renderControls();
+            if (tab === 'rules') renderRules();
+        }
+
+        // --- General Specs ---
+        function fillGeneralForm() {
+            const g = state.assays[activeAssayId].general;
+            
+            // Handle legacy string sampleType
+            if (typeof g.sampleType === 'string') {
+                g.sampleType = g.sampleType ? g.sampleType.split(',').map(s => s.trim()) : [];
+            }
+            renderSampleTypeTags();
+
+            document.getElementById('inp-test-code').value = g.testCode;
+            document.getElementById('inp-eval-threshold').value = g.evalThreshold;
+            document.getElementById('inp-max-cycles').value = g.maxCycles;
+            document.getElementById('chk-inhibition').checked = g.inhibition;
+            document.getElementById('sel-units').value = g.units;
+            document.getElementById('sel-rounding').value = g.rounding;
+            document.getElementById('inp-slope').value = g.slope;
+            document.getElementById('inp-intercept').value = g.intercept;
+            document.getElementById('inp-r2').value = g.r2;
+
+            setAssayMode(g.assayMode || 'qual');
+            
+            const w = state.assays[activeAssayId].westgard;
+            document.getElementById('wg-12s').checked = w.s12;
+            document.getElementById('wg-22s').checked = w.s22;
+            document.getElementById('wg-13s').checked = w.s13;
+        }
+
+        function captureGeneral() {
+            const g = state.assays[activeAssayId].general;
+            // sampleType is managed via tags
+            g.testCode = document.getElementById('inp-test-code').value;
+            g.evalThreshold = document.getElementById('inp-eval-threshold').value;
+            g.maxCycles = document.getElementById('inp-max-cycles').value;
+            g.inhibition = document.getElementById('chk-inhibition').checked;
+            g.units = document.getElementById('sel-units').value;
+            g.rounding = document.getElementById('sel-rounding').value;
+            g.slope = document.getElementById('inp-slope').value;
+            g.intercept = document.getElementById('inp-intercept').value;
+            g.r2 = document.getElementById('inp-r2').value;
+            // Assay mode is captured via toggle button
+            saveState();
+        }
+
+        function addSampleType() {
+            const sel = document.getElementById('sel-sample-type');
+            const val = sel.value;
+            if (!val) return;
+            
+            const g = state.assays[activeAssayId].general;
+            if (!g.sampleType) g.sampleType = [];
+            if (!g.sampleType.includes(val)) {
+                g.sampleType.push(val);
+                saveState();
+                renderSampleTypeTags();
+                renderSidebar();
+            }
+            sel.value = '';
+        }
+
+        function removeSampleType(tag) {
+            const g = state.assays[activeAssayId].general;
+            g.sampleType = g.sampleType.filter(t => t !== tag);
+            saveState();
+            renderSampleTypeTags();
+            renderSidebar();
+        }
+
+        function renderSampleTypeTags() {
+            const container = document.getElementById('sample-type-tags');
+            container.innerHTML = '';
+            const g = state.assays[activeAssayId].general;
+            const tags = g.sampleType || [];
+            
+            tags.forEach(tag => {
+                const tagEl = document.createElement('div');
+                tagEl.className = "px-3 py-1 bg-brand-blue/10 text-brand-blue border border-brand-blue/20 rounded-full text-xs font-semibold flex items-center gap-2 group hover:bg-brand-blue hover:text-white transition-all cursor-default animate-in zoom-in-95 duration-150";
+                tagEl.innerHTML = `
+                    ${tag}
+                    <button onclick="removeSampleType('${tag}')" class="text-brand-blue/50 group-hover:text-white/80 hover:text-white transition-colors">✕</button>
+                `;
+                container.appendChild(tagEl);
+            });
+            
+            if (tags.length === 0) {
+                container.innerHTML = '<span class="text-[10px] text-slate-300 italic">No types selected</span>';
+            }
+        }
+
+        function setAssayMode(mode) {
+            state.assays[activeAssayId].general.assayMode = mode;
+            const ql = document.getElementById('mode-qual');
+            const qn = document.getElementById('mode-quant');
+            const container = document.getElementById('quant-settings-container');
+
+            if (mode === 'qual') {
+                ql.className = "px-3 py-1 text-[10px] font-bold rounded transition-all bg-white text-brand-blue shadow-sm";
+                qn.className = "px-3 py-1 text-[10px] font-bold rounded transition-all text-slate-400 hover:text-slate-600";
+                container.classList.add('hidden');
+            } else {
+                qn.className = "px-3 py-1 text-[10px] font-bold rounded transition-all bg-white text-brand-blue shadow-sm";
+                ql.className = "px-3 py-1 text-[10px] font-bold rounded transition-all text-slate-400 hover:text-slate-600";
+                container.classList.remove('hidden');
+                // Also ensure quant field visibility internally if switching to quant
+                setQuantMode(state.assays[activeAssayId].general.quantMode);
+            }
+            saveState();
+        }
+
+        function setQuantMode(mode) {
+            state.assays[activeAssayId].general.quantMode = mode;
+            const s = document.getElementById('btn-quant-stored');
+            const p = document.getElementById('btn-quant-plate');
+            const fields = document.getElementById('quant-stored-fields');
+
+            if (mode === 'stored') {
+                s.className = "px-4 py-1.5 text-xs font-bold rounded-md transition-all bg-white text-brand-blue shadow-sm";
+                p.className = "px-4 py-1.5 text-xs font-bold rounded-md transition-all text-slate-500 hover:text-slate-700";
+                fields.classList.remove('hidden');
+            } else {
+                p.className = "px-4 py-1.5 text-xs font-bold rounded-md transition-all bg-white text-brand-blue shadow-sm";
+                s.className = "px-4 py-1.5 text-xs font-bold rounded-md transition-all text-slate-500 hover:text-slate-700";
+                fields.classList.add('hidden');
+            }
+            saveState();
+        }
+
+        function captureRulesPref() {
+            const w = state.assays[activeAssayId].westgard;
+            w.s12 = document.getElementById('wg-12s').checked;
+            w.s22 = document.getElementById('wg-22s').checked;
+            w.s13 = document.getElementById('wg-13s').checked;
+            saveState();
+        }
+
+        // --- Targets ---
+        function renderTargets() {
+            const container = document.getElementById('targets-list');
+            container.innerHTML = '';
+            const targets = state.assays[activeAssayId].targets;
+
+            Object.entries(targets).forEach(([tid, t]) => {
+                const card = document.createElement('div');
+                card.className = "glass-panel p-6 rounded-xl animate-in zoom-in-95 duration-200";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex-1 grid grid-cols-4 gap-4">
+                            <div><label class="label-premium">Target Name</label><input type="text" class="input-premium" value="${t.name}" oninput="updateTarget('${tid}', 'name', this.value)"></div>
+                            <div><label class="label-premium">Type</label><select class="input-premium" onchange="updateTarget('${tid}', 'type', this.value)"><option ${t.type === 'Target' ? 'selected' : ''}>Target</option><option ${t.type === 'IC' ? 'selected' : ''}>IC</option><option ${t.type === 'Passive' ? 'selected' : ''}>Passive</option></select></div>
+                            <div><label class="label-premium">Indicator (Dye)</label><input type="text" class="input-premium" value="${t.indicator}" placeholder="FAM, HEX, CY5" oninput="updateTarget('${tid}', 'indicator', this.value)"></div>
+                            <div><label class="label-premium">LOD / Threshold</label><input type="number" class="input-premium" value="${t.threshold}" oninput="updateTarget('${tid}', 'threshold', this.value)"></div>
+                        </div>
+                        <button onclick="removeTarget('${tid}')" class="ml-4 p-2 text-slate-300 hover:text-red-500">✕</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function addTarget() {
+            const tid = 'T' + Date.now();
+            state.assays[activeAssayId].targets[tid] = { name: 'New Target', type: 'Target', indicator: '', threshold: 38 };
+            saveState();
+            renderTargets();
+        }
+
+        function updateTarget(tid, key, val) {
+            state.assays[activeAssayId].targets[tid][key] = val;
+            saveState();
+        }
+
+        function removeTarget(tid) {
+            delete state.assays[activeAssayId].targets[tid];
+            saveState();
+            renderTargets();
+        }
+
+        // --- Controls ---
+        function renderControls() {
+            const container = document.getElementById('controls-list');
+            container.innerHTML = '';
+            const controls = state.assays[activeAssayId].controls;
+
+            Object.entries(controls).forEach(([cid, c]) => {
+                const row = document.createElement('div');
+                row.className = "glass-panel p-5 rounded-xl flex gap-4 items-end";
+                row.innerHTML = `
+                    <div class="flex-1 grid grid-cols-4 gap-3">
+                        <div><label class="label-premium">Control Name</label><input type="text" class="input-premium" value="${c.name}" oninput="updateControl('${cid}', 'name', this.value)"></div>
+                        <div><label class="label-premium">Lot Number</label><input type="text" class="input-premium" value="${c.lot}" oninput="updateControl('${cid}', 'lot', this.value)"></div>
+                        <div><label class="label-premium">Mean (Ct)</label><input type="number" class="input-premium" value="${c.mean}" oninput="updateControl('${cid}', 'mean', this.value)"></div>
+                        <div><label class="label-premium">SD</label><input type="number" class="input-premium" value="${c.sd}" oninput="updateControl('${cid}', 'sd', this.value)"></div>
+                    </div>
+                    <div class="flex flex-col gap-1 items-center">
+                        <label class="label-premium">Type</label>
+                        <select class="input-premium w-20" onchange="updateControl('${cid}', 'type', this.value)">
+                            <option ${c.type === 'PC' ? 'selected' : ''}>PC</option>
+                            <option ${c.type === 'NC' ? 'selected' : ''}>NC</option>
+                            <option ${c.type === 'IC' ? 'selected' : ''}>IC</option>
+                        </select>
+                    </div>
+                    <button onclick="removeControl('${cid}')" class="p-2 text-slate-300 hover:text-red-500">✕</button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function addControl() {
+            const cid = 'C' + Date.now();
+            state.assays[activeAssayId].controls[cid] = { name: 'Control', lot: '', mean: 25, sd: 1, type: 'PC' };
+            saveState();
+            renderControls();
+        }
+
+        function updateControl(cid, key, val) {
+            state.assays[activeAssayId].controls[cid][key] = val;
+            saveState();
+        }
+
+        function removeControl(cid) {
+            delete state.assays[activeAssayId].controls[cid];
+            saveState();
+            renderControls();
+        }
+
+        // --- Rules & Builder ---
+        function renderRules() {
+            const container = document.getElementById('rules-list');
+            container.innerHTML = '';
+            const rules = state.assays[activeAssayId].rules || [];
+
+            rules.forEach((rule, idx) => {
+                const item = document.createElement('div');
+                item.className = "flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl hover:shadow-md transition-all group";
+                item.innerHTML = `
+                    <div class="flex items-center gap-4">
+                        <div class="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center text-xs font-bold">${idx + 1}</div>
+                        <div>
+                            <span class="text-sm font-bold text-slate-800">${rule.outcome}</span>
+                            <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">${rule.expressionStr}</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="openRuleBuilder(${idx})" class="p-2 text-slate-400 hover:text-brand-blue">
+                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        </button>
+                        <button onclick="deleteRule(${idx})" class="p-2 text-slate-400 hover:text-red-500">
+                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function openRuleBuilder(idx = null) {
+            editingRuleIdx = idx;
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('rule-builder-modal').classList.remove('hidden');
+            
+            const expContainer = document.getElementById('expression-rows');
+            expContainer.innerHTML = '';
+            
+            if (idx !== null) {
+                const rule = state.assays[activeAssayId].rules[idx];
+                document.getElementById('rule-out-name').value = rule.outcome;
+                rule.conditions.forEach(cond => addExprRow(cond));
+            } else {
+                document.getElementById('rule-out-name').value = '';
+                addExprRow();
+            }
+        }
+
+        function addExprRow(data = { target: '', op: '==', val: 'POS' }) {
+            const container = document.getElementById('expression-rows');
+            const row = document.createElement('div');
+            row.className = "flex items-center gap-2 group";
+            
+            const targetSelect = document.createElement('select');
+            targetSelect.className = "input-premium flex-1";
+            Object.values(state.assays[activeAssayId].targets).forEach(t => {
+                targetSelect.innerHTML += `<option value="${t.name}" ${data.target === t.name ? 'selected' : ''}>${t.name}</option>`;
+            });
+
+            row.innerHTML = `
+                <div class="w-12 text-[10px] font-bold text-slate-300 uppercase">${container.children.length === 0 ? 'IF' : 'AND'}</div>
+                ${targetSelect.outerHTML}
+                <select class="input-premium w-20">
+                    <option value="==" ${data.op === '==' ? 'selected' : ''}>IS</option>
+                    <option value="!=" ${data.op === '!=' ? 'selected' : ''}>IS NOT</option>
+                </select>
+                <select class="input-premium w-24">
+                    <option value="POS" ${data.val === 'POS' ? 'selected' : ''}>POS</option>
+                    <option value="NEG" ${data.val === 'NEG' ? 'selected' : ''}>NEG</option>
+                    <option value="ND" ${data.val === 'ND' ? 'selected' : ''}>ND</option>
+                    <option value="INV" ${data.val === 'INV' ? 'selected' : ''}>INVALID</option>
+                </select>
+                <button onclick="this.parentElement.remove()" class="p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+            `;
+            container.appendChild(row);
+        }
+
+        function saveRule() {
+            const outcome = document.getElementById('rule-out-name').value;
+            if (!outcome) return alert("Outcome name required");
+
+            const rows = document.getElementById('expression-rows').children;
+            const conditions = [];
+            const exprArr = [];
+
+            for (let r of rows) {
+                const selects = r.querySelectorAll('select');
+                const cond = { target: selects[0].value, op: selects[1].value, val: selects[2].value };
+                conditions.push(cond);
+                exprArr.push(`${cond.target} ${cond.op} ${cond.val}`);
+            }
+
+            const rule = {
+                outcome,
+                conditions,
+                expressionStr: exprArr.join(' & ')
+            };
+
+            if (editingRuleIdx !== null) {
+                state.assays[activeAssayId].rules[editingRuleIdx] = rule;
+            } else {
+                state.assays[activeAssayId].rules.push(rule);
+            }
+
+            saveState();
+            closeModal();
+            renderRules();
+        }
+
+        function closeModal() {
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            document.getElementById('rule-builder-modal').classList.add('hidden');
+        }
+
+        function deleteRule(idx) {
+            state.assays[activeAssayId].rules.splice(idx, 1);
+            saveState();
+            renderRules();
+        }
+
+        function addRule() {
+            openRuleBuilder();
+        }
+
+        // --- Exports & Cleanup ---
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", `pcrai_config_${new Date().toISOString().split('T')[0]}.json`);
+            dlAnchorElem.click();
+        }
+
+        function exportToExcel() {
+            const wb = XLSX.utils.book_new();
+            
+            // For Excel, we flatten the hierarchy back into the user's expected tabs
+            const assaysArr = [];
+            const targetsArr = [];
+            const controlsArr = [];
+            const rulesArr = [];
+            const lodArr = [];
+
+            Object.values(state.assays).forEach(a => {
+                assaysArr.push([a.id, a.name, a.general.sampleType, '-', a.general.testCode, a.general.rounding]);
+                
+                Object.values(a.targets).forEach(t => {
+                    targetsArr.push([a.id, t.name, t.type, t.indicator, t.threshold]);
+                    lodArr.push([a.id, t.name, 'CT', 'LOD', 'Limit of Detection', t.threshold]);
+                });
+
+                Object.values(a.controls).forEach(c => {
+                    controlsArr.push([a.id, c.name, '-', c.type]);
+                    // Add to a QC Ranges tab as well
+                    // headers: ["Assay ID", "Control Name", "Qual/Quant", "Range Name (lot)", "Range Start Date", "SD", "Mean"]
+                    // Note: This is an simplified mapping
+                });
+                
+                a.rules.forEach((r, idx) => {
+                    rulesArr.push([idx + 1, a.id, '-', 'All', 'Outcome', r.expressionStr, '-', r.outcome, 'Error', 'Verify']);
+                });
+            });
+
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "Assay", "Sample Type", "Run Label", "Test Code", "Rounding"], ...assaysArr]), "Assays");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "Target Name", "Target Type", "Indicator", "Threshold"], ...targetsArr]), "Targets");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "Control Name", "Run Label", "Type"], ...controlsArr]), "Controls");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Order", "Assay ID", "Target", "Role", "Name", "Trigger", "Full Trigger", "Outcome", "Flag", "Actions"], ...rulesArr]), "Rules");
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "TARGET", "MODE", "GROUP", "DESCRIPTION", "BOUNDARY"], ...lodArr]), "Lod Settings");
+
+            XLSX.writeFile(wb, "Assay_Config_Export.xlsx");
+        }
+
+        function clearAllData() {
+            if (confirm("Clear all locally saved assays? This cannot be undone.")) {
+                state = { assays: {} };
+                saveState();
+                location.reload();
+            }
+        }
+
+        function deleteCurrentAssay() {
+            if (confirm("Delete this assay entire definition?")) {
+                delete state.assays[activeAssayId];
+                activeAssayId = null;
+                saveState();
+                location.reload();
+            }
+        }
+
+        // Boot
+        window.onload = () => {
+            renderSidebar();
+            const firstId = Object.keys(state.assays)[0];
+            if (firstId) selectAssay(firstId);
+        };
+    </script>
+</body>
+
+</html>
