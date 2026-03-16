@@ -22,6 +22,9 @@
                             accent: '#2dd4bf',
                             bg: '#f8fafc'
                         }
+                    },
+                    gridTemplateColumns: {
+                        '13': 'repeat(13, minmax(0, 1fr))',
                     }
                 }
             }
@@ -42,6 +45,48 @@
             border-bottom: 2px solid #3b82f6;
             color: #3b82f6;
         }
+        .status-badge {
+            font-size: 8px;
+            font-weight: 800;
+            padding: 1px 4px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .status-complete { background: #dcfce7; color: #166534; }
+        .status-draft { background: #fef9c3; color: #854d0e; }
+        .status-alert { background: #fee2e2; color: #991b1b; }
+        
+        .well-cell {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+        }
+        .well-sample { background: #f1f5f9; color: #64748b; }
+        .well-pc { background: #dcfce7; color: #166534; border-color: #bbf7d0; }
+        .well-nc { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+        .well-ic { background: #e0f2fe; color: #075985; border-color: #bae6fd; }
+        .well-empty { background: transparent; color: #cbd5e1; border-style: dashed; }
+        .brush-active {
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #3b82f6;
+            transform: scale(1.1);
+            z-index: 10;
+        }
+
+        .plate-grid-layout {
+            display: grid;
+            grid-template-columns: repeat(13, 32px);
+            gap: 4px;
+        }
+        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -67,6 +112,15 @@
             <button onclick="exportJSON()"
                 class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10">JSON
                 Export</button>
+            <button onclick="triggerImport()"
+                class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                Import
+            </button>
+            <input type="file" id="import-excel-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="importFromExcel(event)">
             <button onclick="exportToExcel()"
                 class="px-4 py-2 text-sm font-semibold bg-brand-blue hover:bg-blue-600 rounded-lg shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,9 +203,15 @@
                     <button id="tab-controls" onclick="switchTab('controls')"
                         class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">QC
                         & Controls</button>
+                    <button id="tab-plate" onclick="switchTab('plate')"
+                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Plate Layout</button>
                     <button id="tab-rules" onclick="switchTab('rules')"
                         class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Outcome
                         Rules</button>
+                    <button id="tab-test" onclick="switchTab('test')"
+                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Test Logic</button>
+                    <button id="tab-summary" onclick="switchTab('summary')"
+                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Summary</button>
                 </div>
             </div>
 
@@ -398,9 +458,194 @@
                         <button onclick="addRule()"
                             class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-md hover:bg-slate-900 transition-all">+
                             New Rule</button>
-                    </div>
                     <div id="rules-list" class="space-y-3">
                         <!-- Rules -->
+                    </div>
+                </div>
+
+                <!-- Tab: Test Logic -->
+                <div id="panel-test" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-brand-blue/10 text-brand-blue rounded-lg">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-bold text-slate-800">Logic Validation Playground</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Simulate target results to verify outcome determination logic.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel p-8 rounded-3xl space-y-8">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-50 pb-2">Set Target Statuses</label>
+                            <div id="simulator-targets" class="flex flex-wrap gap-4">
+                                <!-- Target toggles -->
+                            </div>
+                        </div>
+                        
+                        <div class="pt-6 border-t border-slate-100">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Simulated Interpretation</label>
+                            <div id="simulator-result" class="p-6 bg-slate-900 rounded-2xl flex items-center justify-between shadow-xl shadow-slate-900/20">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-2 h-10 bg-brand-accent rounded-full"></div>
+                                    <div class="flex flex-col">
+                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Resulting Outcome</span>
+                                        <span id="simulator-outcome-label" class="text-2xl text-white font-bold tracking-tight">UNKNOWN</span>
+                                    </div>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-[10px] font-mono text-brand-accent/60 block mb-1 uppercase">Logic Trace</span>
+                                    <div id="simulator-triggered-rule" class="text-xs font-mono text-slate-400 italic">No matching rule</div>
+                                </div>
+                        </div>
+                    </div>
+
+                    <!-- Monte Carlo Stress Test -->
+                    <div class="glass-panel p-8 rounded-3xl bg-slate-50/50 border-dashed border-2 border-slate-200">
+                        <div class="flex flex-col lg:flex-row gap-8">
+                            <!-- Scenario Sidebar -->
+                            <div class="w-full lg:w-72 space-y-4 shrink-0">
+                                <div class="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                                    <h6 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Batch Scenarios</h6>
+                                    
+                                    <div class="space-y-4 pt-2">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-semibold text-slate-600">Standard Curve</span>
+                                            <select id="sim-std-curve" class="text-[10px] font-bold bg-slate-50 border-none rounded px-2 py-1 focus:ring-1 focus:ring-brand-blue">
+                                                <option value="perfect">Perfect (R² > 0.99)</option>
+                                                <option value="s2-out">Standard 2 Out</option>
+                                                <option value="failed">Failed Curve</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-semibold text-slate-600">PC Status</span>
+                                            <select id="sim-pc-status" class="text-[10px] font-bold bg-slate-50 border-none rounded px-2 py-1 focus:ring-1 focus:ring-brand-blue">
+                                                <option value="pass">Passing</option>
+                                                <option value="1-2s">Warning (1-2s)</option>
+                                                <option value="fail">Failure (1-3s)</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="space-y-2">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-xs font-semibold text-slate-600">Cross-Contamination Risk</span>
+                                                <label class="relative inline-flex items-center cursor-pointer">
+                                                    <input type="checkbox" id="sim-contamination" class="sr-only peer">
+                                                    <div class="w-7 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-500"></div>
+                                                </label>
+                                            </div>
+                                            <p class="text-[9px] text-slate-400 italic">Forces high Ct / low Ct adjacent wells.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4">
+                                    <h6 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Population Params</h6>
+                                    <div class="space-y-4">
+                                        <div>
+                                            <div class="flex justify-between text-[10px] mb-1 font-bold">
+                                                <span class="text-slate-400 uppercase">Positivity Rate</span>
+                                                <span id="sim-pos-value" class="text-brand-blue">15%</span>
+                                            </div>
+                                            <input type="range" id="sim-pos-rate" min="0" max="100" value="15" oninput="document.getElementById('sim-pos-value').innerText = this.value + '%'" class="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-blue">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between text-[10px] mb-1 font-bold">
+                                                <span class="text-slate-400 uppercase">Mean Ct (Positives)</span>
+                                                <span id="sim-ct-value" class="text-brand-blue">28</span>
+                                            </div>
+                                            <input type="range" id="sim-mean-ct" min="15" max="38" value="28" oninput="document.getElementById('sim-ct-value').innerText = this.value" class="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-blue">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button onclick="runMonteCarlo()" class="w-full py-4 bg-slate-900 text-white text-xs font-bold rounded-2xl shadow-xl shadow-slate-900/20 hover:bg-black transition-all flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                    Execute Simulation
+                                </button>
+                            </div>
+
+                            <!-- Main Simulation Display -->
+                            <div class="flex-1 space-y-6">
+                                <div id="monte-carlo-grid" class="plate-grid-layout !gap-2 p-6 bg-slate-900 rounded-3xl shadow-2xl inline-grid relative min-h-[360px] min-w-[500px]">
+                                    <!-- Simulation grid -->
+                                    <div class="absolute inset-0 flex items-center justify-center text-slate-700 text-[10px] font-bold uppercase tracking-widest pointer-events-none" id="mc-empty-hint">Set parameters and execute simulation</div>
+                                </div>
+                                <div id="mc-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <!-- Dynamic stats -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Plate Layout -->
+                <div id="panel-plate" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h4 class="text-lg font-bold text-slate-800">96-Well Plate Layout Designer</h4>
+                            <p class="text-xs text-slate-400 mt-1">Define standard well assignments for this assay template.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="clearPlate()" class="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-50 transition-all">Reset Grid</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-8">
+                        <div class="glass-panel p-8 rounded-3xl shadow-xl shadow-slate-200/50 bg-white">
+                            <div id="plate-grid" class="plate-grid-layout">
+                                <!-- Grid -->
+                            </div>
+                        </div>
+                        <div class="w-64 space-y-6">
+                            <div class="glass-panel p-6 rounded-2xl space-y-4">
+                                <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Well Legend</h5>
+                                <div class="space-y-3" id="well-legend">
+                                    <div class="flex items-center gap-3 cursor-pointer group" onclick="setWellBrush('sample')">
+                                        <div id="legend-sample" class="well-cell well-sample group-hover:shadow-md transition-all">S</div> 
+                                        <span class="text-xs font-medium text-slate-600">Sample Well</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 cursor-pointer group" onclick="setWellBrush('pc')">
+                                        <div id="legend-pc" class="well-cell well-pc group-hover:shadow-md transition-all">PC</div> 
+                                        <span class="text-xs font-medium text-slate-600">Positive Control</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 cursor-pointer group" onclick="setWellBrush('nc')">
+                                        <div id="legend-nc" class="well-cell well-nc group-hover:shadow-md transition-all">NC</div> 
+                                        <span class="text-xs font-medium text-slate-600">Negative Control</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 cursor-pointer group" onclick="setWellBrush('ic')">
+                                        <div id="legend-ic" class="well-cell well-ic group-hover:shadow-md transition-all">IC</div> 
+                                        <span class="text-xs font-medium text-slate-600">Internal Control</span>
+                                    </div>
+                                    <div class="flex items-center gap-3 cursor-pointer group" onclick="setWellBrush('empty')">
+                                        <div id="legend-empty" class="well-cell well-empty group-hover:shadow-md transition-all">E</div> 
+                                        <span class="text-xs font-medium text-slate-600">Empty / Blocked</span>
+                                    </div>
+                                </div>
+                                <p class="text-[10px] text-slate-400 leading-relaxed mt-4 italic border-t border-slate-50 pt-4">
+                                    Click a legend icon to select a brush, then drag across the grid to paint.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Summary -->
+                <div id="panel-summary" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-lg font-bold text-slate-800">Assay Summary Overview</h4>
+                        <div class="flex gap-2">
+                            <button onclick="window.print()" class="px-4 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-50 transition-all flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 00-2 2h2m2 4h10a2 2 0 002-2v-4a2 2 0 012-2H5a2 2 0 012 2v4a2 2 0 002 2zM9 17h6m-6-4h6m-6-8h6"></path></svg>
+                                Print Summary
+                            </button>
+                        </div>
+                    </div>
+                    <div id="summary-content" class="space-y-6">
+                        <!-- Dynamic Summary -->
                     </div>
                 </div>
             </div>
@@ -464,26 +709,53 @@
         function renderSidebar() {
             const list = document.getElementById('assay-list');
             list.innerHTML = '';
+            
+            // Health Logic
+            const getHealth = (assay) => {
+                const targetsCount = Object.keys(assay.targets || {}).length;
+                const controlsCount = Object.keys(assay.controls || {}).length;
+                const rulesCount = (assay.rules || []).length;
+                
+                if (targetsCount > 0 && controlsCount > 0 && rulesCount > 0) return { label: 'Complete', class: 'status-complete' };
+                if (targetsCount === 0) return { label: 'Missing Targets', class: 'status-alert' };
+                return { label: 'Draft', class: 'status-draft' };
+            };
 
             Object.values(state.assays).forEach(assay => {
+                const health = getHealth(assay);
                 const itemContainer = document.createElement('div');
-                itemContainer.className = "group relative";
+                itemContainer.className = "group relative border-b border-slate-50";
 
                 const btn = document.createElement('button');
-                btn.className = `w-full px-5 py-4 text-left flex flex-col gap-1 transition-all ${activeAssayId === assay.id ? 'sidebar-item-active' : 'hover:bg-slate-50 text-slate-600'}`;
+                btn.className = `w-full px-5 py-5 text-left flex flex-col gap-2 transition-all ${activeAssayId === assay.id ? 'sidebar-item-active' : 'hover:bg-slate-50 text-slate-600'}`;
                 btn.onclick = () => selectAssay(assay.id);
 
                 const nameDiv = document.createElement('div');
-                nameDiv.className = "flex justify-between items-center pr-6";
-                nameDiv.innerHTML = `<span class="font-bold text-sm">${assay.name}</span> <span class="text-[9px] text-slate-400 font-bold">${assay.id}</span>`;
+                nameDiv.className = "flex justify-between items-start";
+                nameDiv.innerHTML = `
+                    <div class="flex flex-col">
+                        <span class="font-bold text-sm tracking-tight">${assay.name}</span>
+                        <span class="text-[9px] text-slate-400 font-bold uppercase">${assay.id}</span>
+                    </div>
+                    <span class="status-badge ${health.class}">${health.label}</span>
+                `;
 
-                const sampleTypes = Array.isArray(assay.general?.sampleType) ? assay.general.sampleType.join(', ') : (assay.general?.sampleType || 'No Type');
+                const sampleTypes = Array.isArray(assay.general?.sampleType) ? assay.general.sampleType.slice(0, 2).join(', ') : (assay.general?.sampleType || 'No Type');
                 const metaDiv = document.createElement('div');
-                metaDiv.className = "text-[10px] text-slate-400 font-medium truncate pr-6";
-                metaDiv.innerText = `${Object.keys(assay.targets || {}).length} Targets • ${sampleTypes}`;
+                metaDiv.className = "flex items-center gap-3 mt-1";
+                metaDiv.innerHTML = `
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        ${Object.keys(assay.targets || {}).length}
+                    </div>
+                    <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                        ${(assay.rules || []).length}
+                    </div>
+                `;
 
                 const delBtn = document.createElement('button');
-                delBtn.className = "absolute right-4 top-1/2 -translate-y-1/2 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all";
+                delBtn.className = "absolute right-4 bottom-5 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all";
                 delBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
                 delBtn.onclick = (e) => deleteAssay(assay.id, e);
                 delBtn.title = "Delete Assay";
@@ -540,18 +812,29 @@
 
         function switchTab(tab) {
             currentTab = tab;
-            ['general', 'targets', 'controls', 'rules'].forEach(t => {
-                document.getElementById(`panel-${t}`).classList.add('hidden');
-                document.getElementById(`tab-${t}`).classList.remove('tab-active');
-                document.getElementById(`tab-${t}`).classList.add('text-slate-400');
+            ['general', 'targets', 'controls', 'rules', 'summary', 'plate', 'test'].forEach(t => {
+                const el = document.getElementById(`panel-${t}`);
+                const tabEl = document.getElementById(`tab-${t}`);
+                if (el) el.classList.add('hidden');
+                if (tabEl) {
+                    tabEl.classList.remove('tab-active');
+                    tabEl.classList.add('text-slate-400');
+                }
             });
-            document.getElementById(`panel-${tab}`).classList.remove('hidden');
-            document.getElementById(`tab-${tab}`).classList.add('tab-active');
-            document.getElementById(`tab-${tab}`).classList.remove('text-slate-400');
+            const activePanel = document.getElementById(`panel-${tab}`);
+            const activeTab = document.getElementById(`tab-${tab}`);
+            if (activePanel) activePanel.classList.remove('hidden');
+            if (activeTab) {
+                activeTab.classList.add('tab-active');
+                activeTab.classList.remove('text-slate-400');
+            }
 
             if (tab === 'targets') renderTargets();
             if (tab === 'controls') renderControls();
             if (tab === 'rules') renderRules();
+            if (tab === 'test') renderRuleSimulator();
+            if (tab === 'summary') renderSummary();
+            if (tab === 'plate') renderPlateBuilder();
         }
 
         // --- General Specs ---
@@ -1011,6 +1294,336 @@
             XLSX.writeFile(wb, "Assay_Config_Export.xlsx");
         }
 
+        function triggerImport() {
+            document.getElementById('import-excel-input').click();
+        }
+
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                const importedAssays = {};
+
+                // Helper to get sheet data
+                const getSheetData = (name) => {
+                    const sheet = workbook.Sheets[name];
+                    return sheet ? XLSX.utils.sheet_to_json(sheet) : null;
+                };
+
+                // Check for structured export format first
+                const assaysData = getSheetData("Assays");
+                const targetsData = getSheetData("Targets");
+                const controlsData = getSheetData("Controls");
+                const rulesData = getSheetData("Rules");
+
+                if (assaysData) {
+                    // Structured Format
+                    assaysData.forEach(row => {
+                        const id = row["Assay ID"] || ('A-' + Math.random().toString(36).substr(2, 4).toUpperCase());
+                        importedAssays[id] = {
+                            id: id,
+                            name: row["Assay"] || "Imported Assay",
+                            general: {
+                                assayMode: 'qual',
+                                sampleType: row["Sample Type"] ? (typeof row["Sample Type"] === 'string' ? row["Sample Type"].split(',').map(s => s.trim()) : [row["Sample Type"]]) : [],
+                                testCode: row["Test Code"] || '',
+                                evalThreshold: 0.2,
+                                maxCycles: 45,
+                                inhibition: true,
+                                quantMode: 'stored',
+                                units: 'copies/mL',
+                                rounding: row["Rounding"] || 'none',
+                                slope: -3.3,
+                                intercept: 40,
+                                r2: 0.99
+                            },
+                            targets: {},
+                            controls: {},
+                            rules: [],
+                            westgard: {
+                                '1-2s': { enabled: true, level: 'warning', multiRun: false },
+                                '1-3s': { enabled: true, level: 'error', multiRun: false },
+                                '2-2s': { enabled: true, level: 'error', multiRun: false },
+                                'R-4s': { enabled: false, level: 'error', multiRun: false },
+                                '4-1s': { enabled: false, level: 'warning', multiRun: true },
+                                '10-x': { enabled: false, level: 'warning', multiRun: true }
+                            }
+                        };
+                    });
+
+                    if (targetsData) {
+                        targetsData.forEach(row => {
+                            const aid = row["Assay ID"];
+                            if (importedAssays[aid]) {
+                                const tid = 'T' + Math.random().toString(36).substr(2, 9);
+                                importedAssays[aid].targets[tid] = {
+                                    name: row["Target Name"] || "Unknown Target",
+                                    type: row["Target Type"] || "Target",
+                                    indicator: row["Indicator"] || "",
+                                    threshold: row["Threshold"] || 38
+                                };
+                            }
+                        });
+                    }
+
+                    if (controlsData) {
+                        controlsData.forEach(row => {
+                            const aid = row["Assay ID"];
+                            if (importedAssays[aid]) {
+                                const cid = 'C' + Math.random().toString(36).substr(2, 9);
+                                importedAssays[aid].controls[cid] = {
+                                    name: row["Control Name"] || "Control",
+                                    runfileLabel: row["Run Label"] || "",
+                                    lot: "",
+                                    mean: 25,
+                                    sd: 1,
+                                    type: row["Type"] || "PC"
+                                };
+                            }
+                        });
+                    }
+
+                    if (rulesData) {
+                        rulesData.forEach(row => {
+                            const aid = row["Assay ID"];
+                            if (importedAssays[aid]) {
+                                const exprStr = row["Trigger"] || row["Full Trigger"] || "";
+                                const outcome = row["Outcome"] || "UNKNOWN";
+                                const conditions = [];
+                                if (exprStr) {
+                                    const parts = exprStr.split('&').map(p => p.trim());
+                                    parts.forEach(p => {
+                                        const match = p.match(/(.+?)\s*(==|!=)\s*(.+)/);
+                                        if (match) {
+                                            conditions.push({ target: match[1].trim(), op: match[2].trim(), val: match[3].trim() });
+                                        }
+                                    });
+                                }
+                                importedAssays[aid].rules.push({ outcome, conditions, expressionStr: exprStr });
+                            }
+                        });
+                    }
+                } else {
+                    // Flat Format Fallback (Single Sheet)
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const flatData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    flatData.forEach(row => {
+                        const assayName = row["Assay"] || row["Assay Name"] || "Default Assay";
+                        const id = row["Assay ID"] || (Object.values(importedAssays).find(a => a.name === assayName)?.id) || ('A-' + Math.random().toString(36).substr(2, 4).toUpperCase());
+                        
+                        if (!importedAssays[id]) {
+                            importedAssays[id] = {
+                                id: id,
+                                name: assayName,
+                                general: {
+                                    assayMode: 'qual',
+                                    sampleType: row["Sample Type"] ? [row["Sample Type"]] : [],
+                                    testCode: row["Test Code"] || '',
+                                    evalThreshold: 0.2,
+                                    maxCycles: 45,
+                                    inhibition: true,
+                                    quantMode: 'stored',
+                                    units: 'copies/mL',
+                                    rounding: 'none',
+                                    slope: -3.3,
+                                    intercept: 40,
+                                    r2: 0.99
+                                },
+                                targets: {},
+                                controls: {},
+                                rules: [],
+                                westgard: {
+                                    '1-2s': { enabled: true, level: 'warning', multiRun: false },
+                                    '1-3s': { enabled: true, level: 'error', multiRun: false },
+                                    '2-2s': { enabled: true, level: 'error', multiRun: false },
+                                    'R-4s': { enabled: false, level: 'error', multiRun: false },
+                                    '4-1s': { enabled: false, level: 'warning', multiRun: true },
+                                    '10-x': { enabled: false, level: 'warning', multiRun: true }
+                                }
+                            };
+                        }
+
+                        // Add Target if present
+                        if (row["Target Name"]) {
+                            const tid = 'T' + Math.random().toString(36).substr(2, 9);
+                            importedAssays[id].targets[tid] = {
+                                name: row["Target Name"],
+                                type: row["Target Type"] || "Target",
+                                indicator: row["Indicator"] || "",
+                                threshold: row["Threshold"] || 38
+                            };
+                        }
+
+                        // Add Control if present
+                        if (row["Control Name"]) {
+                            const cid = 'C' + Math.random().toString(36).substr(2, 9);
+                            importedAssays[id].controls[cid] = {
+                                name: row["Control Name"],
+                                runfileLabel: row["Run Label"] || "",
+                                lot: "",
+                                mean: 25,
+                                sd: 1,
+                                type: row["Type"] || "PC"
+                            };
+                        }
+                    });
+                }
+
+                // Final Merge
+                Object.assign(state.assays, importedAssays);
+                saveState();
+                renderSidebar();
+                alert(`Import complete! Processed ${Object.keys(importedAssays).length} assays.`);
+                event.target.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- Summary ---
+        function renderSummary() {
+            const assay = state.assays[activeAssayId];
+            const container = document.getElementById('summary-content');
+            container.innerHTML = '';
+
+            const g = assay.general;
+            const targets = Object.values(assay.targets);
+            const controls = Object.values(assay.controls);
+            const rules = assay.rules || [];
+            const westgard = assay.westgard || {};
+
+            // Sections
+            const sections = [
+                {
+                    title: 'General Specifications',
+                    icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>`,
+                    color: 'text-brand-blue',
+                    content: `
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Test Code</span><span class="font-bold text-slate-700">${g.testCode || 'N/A'}</span></div>
+                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Assay Mode</span><span class="font-bold text-slate-700 uppercase">${g.assayMode || 'Qualitative'}</span></div>
+                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Units</span><span class="font-bold text-slate-700">${g.units || 'N/A'}</span></div>
+                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Rounding</span><span class="font-bold text-slate-700">${g.rounding || '0'} decimals</span></div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t border-slate-50 flex flex-wrap gap-2">
+                            <span class="text-slate-400 text-[10px] font-bold uppercase tracking-wider block w-full mb-1">Sample Types</span>
+                            ${g.sampleType && g.sampleType.length > 0 ? g.sampleType.map(st => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">${st}</span>`).join('') : '<span class="text-slate-400 italic">No sample types defined</span>'}
+                        </div>
+                    `
+                },
+                {
+                    title: `Assay Targets (${targets.length})`,
+                    icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
+                    color: 'text-brand-teal',
+                    content: targets.length === 0 ? '<p class="text-xs text-slate-400 italic">No targets defined</p>' : `
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs text-left">
+                                <thead class="text-slate-400 uppercase font-bold tracking-wider">
+                                    <tr class="border-b border-slate-50">
+                                        <th class="pb-2">Target</th>
+                                        <th class="pb-2">Type</th>
+                                        <th class="pb-2">Indicator (Dye)</th>
+                                        <th class="pb-2">Threshold / LOD</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-50">
+                                    ${targets.map(t => `
+                                        <tr>
+                                            <td class="py-2 pr-4 font-bold text-slate-700">${t.name}</td>
+                                            <td class="py-2 pr-4 text-slate-500 uppercase tracking-tighter font-medium">${t.type || 'Target'}</td>
+                                            <td class="py-2 pr-4 text-slate-600">${t.indicator || 'N/A'}</td>
+                                            <td class="py-2 pr-4 text-slate-600 font-mono">${t.threshold || '38'} Ct</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `
+                },
+                {
+                    title: `Controls & Westgard`,
+                    icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>`,
+                    color: 'text-brand-blue',
+                    content: `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Active Controls (${controls.length})</h5>
+                                ${controls.length === 0 ? '<p class="text-xs text-slate-400 italic">No controls defined</p>' : `
+                                    <div class="space-y-2">
+                                        ${controls.map(c => `
+                                            <div class="flex justify-between items-center p-2 bg-slate-50/50 rounded-lg border border-slate-100">
+                                                <div>
+                                                    <span class="text-xs font-bold text-slate-700">${c.name}</span>
+                                                    <span class="text-[10px] text-slate-400 block">${c.lot || 'Empty Lot'} • ${c.type}</span>
+                                                </div>
+                                                <div class="text-right">
+                                                    <span class="text-xs font-bold text-brand-blue">${c.mean} Ct</span>
+                                                    <span class="text-[10px] text-slate-400 block">±${c.sd} SD</span>
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                `}
+                            </div>
+                            <div>
+                                <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Westgard Settings</h5>
+                                <div class="grid grid-cols-2 gap-2">
+                                    ${Object.entries(westgard).map(([rid, conf]) => `
+                                        <div class="flex items-center gap-2 p-1.5 bg-white border border-slate-50 rounded shadow-sm">
+                                            <div class="w-2 h-2 rounded-full ${conf.enabled ? (conf.level === 'error' ? 'bg-red-500' : 'bg-orange-400') : 'bg-slate-200'}"></div>
+                                            <span class="text-xs font-bold ${conf.enabled ? 'text-slate-700' : 'text-slate-300'}">${rid}</span>
+                                            ${conf.enabled ? `<span class="text-[8px] font-bold uppercase tracking-widest ml-auto ${conf.level === 'error' ? 'text-red-400' : 'text-orange-400'}">${conf.level}</span>` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `
+                },
+                {
+                    title: `Outcome Evaluation Rules (${rules.length})`,
+                    icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10"></path></svg>`,
+                    color: 'text-slate-800',
+                    content: rules.length === 0 ? '<p class="text-xs text-slate-400 italic">No logical rules defined</p>' : `
+                        <div class="space-y-2">
+                            ${rules.map((r, i) => `
+                                <div class="flex items-start gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                                    <span class="w-5 h-5 flex-shrink-0 bg-slate-800 text-white rounded text-[10px] font-bold flex items-center justify-center">${i + 1}</span>
+                                    <div>
+                                        <h6 class="text-xs font-bold text-slate-800 uppercase tracking-tight">${r.outcome}</h6>
+                                        <code class="text-[10px] text-slate-500 font-mono">${r.expressionStr}</code>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `
+                }
+            ];
+
+            sections.forEach(s => {
+                const div = document.createElement('div');
+                div.className = "summary-section animate-in fade-in slide-in-from-bottom-4 duration-500";
+                div.innerHTML = `
+                    <div class="glass-panel p-6 rounded-2xl relative overflow-hidden group hover:shadow-xl transition-all duration-300">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-slate-100 group-hover:bg-brand-blue/20 transition-colors"></div>
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="p-2 bg-slate-50 rounded-lg ${s.color}">${s.icon}</div>
+                            <h5 class="text-sm font-bold text-slate-800 uppercase tracking-wide">${s.title}</h5>
+                        </div>
+                        <div class="space-y-4">
+                            ${s.content}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
         function clearAllData() {
             if (confirm("Clear all locally saved assays? This cannot be undone.")) {
                 state = { assays: {} };
@@ -1041,6 +1654,285 @@
             deleteAssay(activeAssayId);
         }
 
+        // --- Simulator ---
+        let simState = {};
+        function renderRuleSimulator() {
+            const assay = state.assays[activeAssayId];
+            if (!assay) return;
+            const container = document.getElementById('simulator-targets');
+            if (!container) return;
+            container.innerHTML = '';
+            
+            Object.values(assay.targets).forEach(t => {
+                if (!simState[t.name]) simState[t.name] = 'NEG';
+                
+                const card = document.createElement('div');
+                card.className = "p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex flex-col gap-2 min-w-[100px]";
+                card.innerHTML = `
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate w-full">${t.name}</span>
+                    <div class="flex gap-1">
+                        ${['POS', 'NEG', 'ND'].map(val => `
+                            <button onclick="toggleSimValue('${t.name}', '${val}')" class="flex-1 py-1 text-[9px] font-bold rounded transition-all ${simState[t.name] === val ? 'bg-brand-blue text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}">${val}</button>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            evaluateSimulator();
+        }
+
+        function toggleSimValue(name, val) {
+            simState[name] = val;
+            renderRuleSimulator();
+        }
+
+        function evaluateSimulator() {
+            const rules = state.assays[activeAssayId].rules || [];
+            let outcome = 'ND / INCONCLUSIVE';
+            let ruleStr = 'No matching rule';
+            
+            for (let rule of rules) {
+                const match = rule.conditions.every(c => {
+                    const actual = simState[c.target] || 'NEG';
+                    if (c.op === '==') return actual === c.val;
+                    if (c.op === '!=') return actual !== c.val;
+                    return false;
+                });
+                
+                if (match) {
+                    outcome = rule.outcome;
+                    ruleStr = `Matched Rule: ${rule.expressionStr}`;
+                    break;
+                }
+            }
+            
+            document.getElementById('simulator-outcome-label').innerText = outcome;
+            document.getElementById('simulator-triggered-rule').innerText = ruleStr;
+        }
+
+        function runMonteCarlo() {
+            const assay = state.assays[activeAssayId];
+            if (!assay) return;
+
+            const posRate = parseInt(document.getElementById('sim-pos-rate').value) / 100;
+            const meanCt = parseInt(document.getElementById('sim-mean-ct').value);
+            const stdCurveScenario = document.getElementById('sim-std-curve').value;
+            const pcStatusScenario = document.getElementById('sim-pc-status').value;
+            const contaminationRisk = document.getElementById('sim-contamination').checked;
+
+            const grid = document.getElementById('monte-carlo-grid');
+            const statsContainer = document.getElementById('mc-stats');
+            const hint = document.getElementById('mc-empty-hint');
+            
+            if (hint) hint.classList.add('hidden');
+            grid.innerHTML = '';
+            
+            const stats = { Total: 96 };
+            const wells = [];
+            
+            // Helper: Generate Well Contents
+            const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            rows.forEach((r, rIdx) => {
+                for (let c = 1; c <= 12; c++) {
+                    const key = `${r}${c}`;
+                    const layoutType = (assay.plateLayout || {})[key] || 'sample';
+                    const targetResults = {};
+                    
+                    Object.values(assay.targets).forEach(t => {
+                        let ct = 0;
+                        let status = 'NEG';
+                        
+                        // Simulation Logic
+                        if (layoutType === 'pc') {
+                            if (pcStatusScenario === 'fail') ct = 0;
+                            else if (pcStatusScenario === '1-2s') ct = 34.2; // Borderline
+                            else ct = 31.5; // Perfect
+                        } else if (layoutType === 'nc') {
+                            ct = 0;
+                        } else if (layoutType === 'sample') {
+                            if (Math.random() < posRate) {
+                                // Positive Sample
+                                ct = meanCt + (Math.random() * 4 - 2); // Random variant around mean
+                                if (contaminationRisk && rIdx === 4 && c === 6) ct = 14.2; // High Pos Source
+                                if (contaminationRisk && rIdx === 4 && c === 7) ct = 37.8; // Potential Contamination
+                            } else {
+                                ct = 0;
+                            }
+                        }
+                        
+                        // Determine status from Ct (assuming threshold 38)
+                        status = (ct > 0 && ct < (t.threshold || 38)) ? 'POS' : 'NEG';
+                        targetResults[t.name] = { ct, status };
+                    });
+
+                    // Evaluate Clinical Interpretation
+                    let interpretation = 'ND / INCONCLUSIVE';
+                    for (let rule of (assay.rules || [])) {
+                        if (rule.conditions.every(cond => {
+                            const actual = (targetResults[cond.target] || {status: 'NEG'}).status;
+                            return cond.op === '==' ? actual === cond.val : actual !== cond.val;
+                        })) {
+                            interpretation = rule.outcome;
+                            break;
+                        }
+                    }
+
+                    // Special Overrides
+                    if (layoutType === 'pc' && pcStatusScenario === 'fail') interpretation = 'CONTROL FAILURE';
+                    if (layoutType === 'empty') interpretation = 'EMPTY';
+
+                    wells.push({ key, type: layoutType, results: targetResults, interpretation });
+                    stats[interpretation] = (stats[interpretation] || 0) + 1;
+                }
+            });
+
+            // Render Results
+            wells.forEach(w => {
+                const dot = document.createElement('div');
+                let color = 'bg-slate-700';
+                
+                if (w.type === 'pc') color = pcStatusScenario === 'fail' ? 'bg-red-500 animate-pulse' : 'bg-brand-teal';
+                else if (w.type === 'nc') color = 'bg-slate-400';
+                else if (w.interpretation === 'EMPTY') color = 'opacity-0';
+                else if (w.interpretation.includes('DETECTED') || w.interpretation.includes('POS')) color = 'bg-brand-blue';
+                else if (w.interpretation.includes('INVALID') || w.interpretation.includes('ERROR')) color = 'bg-red-500';
+                else color = 'bg-slate-600';
+
+                // Contamination highlight
+                if (contaminationRisk && (w.key === 'E6' || w.key === 'E7')) {
+                    dot.classList.add('ring-2', 'ring-orange-500', 'ring-offset-2', 'ring-offset-slate-900');
+                }
+                
+                dot.className += ` w-6 h-6 rounded-full ${color} shadow-sm cursor-help hover:scale-125 transition-transform duration-75 flex items-center justify-center text-[8px] font-bold text-white/50`;
+                dot.innerHTML = w.type === 'sample' ? '' : w.type.substring(0,1).toUpperCase();
+                
+                const ctInfo = Object.entries(w.results).map(([n, d]) => `${n}: ${d.ct > 0 ? d.ct.toFixed(1) : 'Undet'}`).join('\n');
+                dot.title = `Well ${w.key} (${w.type})\nOutcome: ${w.interpretation}\n\n${ctInfo}`;
+                
+                grid.appendChild(dot);
+            });
+
+            // Summary Stats
+            statsContainer.innerHTML = Object.entries(stats).map(([label, count]) => `
+                <div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
+                    <span class="text-[9px] text-slate-400 block uppercase font-bold truncate">${label}</span>
+                    <span class="text-xl font-bold text-slate-700">${count}</span>
+                </div>
+            `).join('');
+        }
+
+        // --- Plate Builder ---
+        let currentWellBrush = null;
+        let isMouseDown = false;
+        let isPainting = false;
+
+        window.addEventListener('mousedown', () => isMouseDown = true);
+        window.addEventListener('mouseup', () => {
+            isMouseDown = false;
+            if (isPainting) {
+                saveState();
+                isPainting = false;
+            }
+        });
+
+        function setWellBrush(type) {
+            const grid = document.getElementById('plate-grid');
+            document.querySelectorAll('#well-legend .well-cell').forEach(el => el.classList.remove('brush-active'));
+            
+            if (currentWellBrush === type) {
+                currentWellBrush = null;
+                grid.style.cursor = 'default';
+            } else {
+                currentWellBrush = type;
+                document.getElementById(`legend-${type}`).classList.add('brush-active');
+                grid.style.cursor = 'crosshair';
+            }
+        }
+
+        function renderPlateBuilder() {
+            const assay = state.assays[activeAssayId];
+            if (!assay) return;
+            if (!assay.plateLayout) assay.plateLayout = {};
+            
+            const grid = document.getElementById('plate-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            // Header Row (1-12)
+            grid.appendChild(document.createElement('div'));
+            for(let i=1; i<=12; i++) {
+                const h = document.createElement('div');
+                h.className = "text-[10px] font-bold text-slate-300 text-center pb-2";
+                h.innerText = i;
+                grid.appendChild(h);
+            }
+
+            // Rows A-H
+            const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            rows.forEach(r => {
+                const label = document.createElement('div');
+                label.className = "text-[10px] font-bold text-slate-300 flex items-center pr-2";
+                label.innerText = r;
+                grid.appendChild(label);
+
+                for(let c=1; c<=12; c++) {
+                    const key = `${r}${c}`;
+                    const type = assay.plateLayout[key] || 'sample';
+                    const well = document.createElement('div');
+                    well.className = `well-cell well-${type} select-none transition-all duration-75`;
+                    well.innerHTML = type === 'sample' ? 'S' : type.substring(0,2).toUpperCase();
+                    
+                    well.onmousedown = (e) => {
+                        e.preventDefault();
+                        if (currentWellBrush) {
+                            isPainting = true;
+                            paintWell(key, well);
+                        } else {
+                            cycleWell(key);
+                        }
+                    };
+                    well.onmouseenter = () => {
+                        if (isMouseDown && currentWellBrush) {
+                            isPainting = true;
+                            paintWell(key, well);
+                        }
+                    };
+                    grid.appendChild(well);
+                }
+            });
+        }
+
+        function paintWell(key, wellEl) {
+            if (!currentWellBrush) return;
+            const assay = state.assays[activeAssayId];
+            if (assay.plateLayout[key] === currentWellBrush) return;
+            
+            assay.plateLayout[key] = currentWellBrush;
+            wellEl.className = `well-cell well-${currentWellBrush} select-none shadow-sm scale-110 z-10`;
+            wellEl.innerHTML = currentWellBrush === 'sample' ? 'S' : currentWellBrush.substring(0,2).toUpperCase();
+            
+            // Fast persistence
+            localStorage.setItem('pcr_console_v2', JSON.stringify(state));
+        }
+
+        function cycleWell(key) {
+            const assay = state.assays[activeAssayId];
+            const orders = ['sample', 'pc', 'nc', 'ic', 'empty'];
+            const current = assay.plateLayout[key] || 'sample';
+            const nextIdx = (orders.indexOf(current) + 1) % orders.length;
+            assay.plateLayout[key] = orders[nextIdx];
+            saveState();
+            renderPlateBuilder();
+        }
+
+        function clearPlate() {
+            if (confirm("Reset layout to all sample wells?")) {
+                state.assays[activeAssayId].plateLayout = {};
+                saveState();
+                renderPlateBuilder();
+            }
+        }
+
         // Boot
         window.onload = () => {
             renderSidebar();
@@ -1049,5 +1941,4 @@
         };
     </script>
 </body>
-
 </html>

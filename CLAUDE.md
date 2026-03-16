@@ -32,7 +32,8 @@ This repository contains an "Assay Specification Worksheet" application, current
 - [ ] Split specifications into Assay-level and Target-level configurations.
 - [ ] Implement toggle for Stored Formula vs. Per-Plate calculation in Quantitative assays.
 - [ ] Implement Westgard rule toggles/configuration (1-2s, 2-2s, 1-3s).
-- [ ] Add JSON export functionality.
+- [x] Add spreadsheet import functionality (supports multi-sheet and flat formats).
+- [x] Add JSON export functionality.
 
 ## Technical Details
 - **Styling**: Tailwind CSS
