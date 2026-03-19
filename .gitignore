@@ -1,0 +1,5 @@
+# Firebase credentials — never commit real config here
+firebase-web-config.js
+
+# Firebase local files
+.firebase/
