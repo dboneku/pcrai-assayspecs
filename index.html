@@ -7,6 +7,10 @@
     <title>pcr.ai | Assay Configuration Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="firebase-web-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -98,6 +102,26 @@
 
 <body class="bg-brand-bg text-slate-900 font-sans h-screen flex flex-col overflow-hidden">
 
+    <!-- Auth: Login Screen -->
+    <div id="login-screen" class="fixed inset-0 bg-brand-dark z-[200] flex flex-col items-center justify-center">
+        <div class="text-center max-w-sm px-6">
+            <img src="diagnosticsailogo.png" alt="Diagnostics AI Logo" class="h-14 w-auto mx-auto mb-6">
+            <h2 class="text-2xl font-bold text-white mb-2">pcr.ai Assay Console</h2>
+            <p class="text-slate-400 text-sm mb-8">Sign in to access your assay configurations.</p>
+            <button id="google-signin-btn" onclick="signInWithGoogle()"
+                class="flex items-center gap-3 bg-white text-slate-700 font-semibold px-6 py-3 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all mx-auto">
+                <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Sign in with Google
+            </button>
+            <p id="login-error" class="hidden text-red-300 text-sm mt-5 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3"></p>
+        </div>
+    </div>
+
     <!-- Top Navigation -->
     <header class="h-16 bg-brand-dark text-white px-6 flex justify-between items-center shrink-0 z-50">
         <div class="flex items-center gap-4">
@@ -109,6 +133,8 @@
             </div>
         </div>
         <div class="flex items-center gap-3">
+            <button onclick="openFirebaseModal()"
+                class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10">Firebase</button>
             <button onclick="exportJSON()"
                 class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10">JSON
                 Export</button>
@@ -129,17 +155,30 @@
                 </svg>
                 Excel Sheet
             </button>
+            <span id="firebase-status" class="px-2.5 py-1 text-[10px] font-bold rounded-full bg-white/10 text-white/70 uppercase tracking-[0.2em]">Local Only</span>
+            <div id="user-info" class="hidden items-center gap-2 pl-3 border-l border-white/20">
+                <img id="user-avatar" src="" alt="User" class="w-8 h-8 rounded-full border-2 border-white/20 object-cover bg-white/10">
+                <span id="user-email" class="text-xs text-white/70 font-medium hidden lg:block max-w-[140px] truncate"></span>
+                <button onclick="signOutUser()" class="px-3 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10 text-white/80">Sign Out</button>
+            </div>
         </div>
     </header>
 
     <main class="flex-1 flex overflow-hidden">
         <!-- Sidebar: Assay List -->
-        <aside class="w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
-            <div class="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Mix / Assay List</span>
-                <button onclick="createNewAssay()"
-                    class="p-1 px-2 text-xs font-bold bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white rounded transition-all">+
-                    NEW</button>
+        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0">
+            <div class="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Clients & Test Menus</span>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="createNewClient()"
+                        class="p-2 text-xs font-bold bg-slate-200 text-slate-700 hover:bg-slate-300 rounded transition-all">+
+                        Client</button>
+                    <button onclick="createNewAssay()"
+                        class="p-2 text-xs font-bold bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white rounded transition-all">+
+                        Test</button>
+                </div>
             </div>
             <div id="assay-list" class="flex-1 overflow-y-auto py-2">
                 <!-- Dynamically populated -->
@@ -173,14 +212,28 @@
             <div id="assay-header" class="px-8 pt-6 pb-2 shrink-0 bg-white border-b border-slate-200 hidden">
                 <div class="flex justify-between items-start mb-6">
                     <div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-3 flex-wrap">
                             <h2 id="active-assay-name" class="text-2xl font-bold text-slate-800" title="The unique name for this molecular assay configuration.">Assay Name</h2>
-                            <span id="active-assay-id"
-                                class="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-bold rounded uppercase">ID001</span>
+                            <span id="active-client-name"
+                                class="px-2 py-0.5 bg-brand-blue/10 text-brand-blue text-[10px] font-bold rounded uppercase">Default Client</span>
                         </div>
                         <p class="text-sm text-slate-400 mt-1">Configure parameters, targets, and validity rules.</p>
                     </div>
                     <div class="flex gap-2">
+                        <button onclick="duplicateAssay()"
+                            class="p-2 text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg transition-all"
+                            title="Duplicate Assay">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="moveAssayToClient()"
+                            class="p-2 text-slate-400 hover:text-brand-teal hover:bg-teal-50 rounded-lg transition-all"
+                            title="Move to Another Client">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                            </svg>
+                        </button>
                         <button onclick="deleteCurrentAssay()"
                             class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                             title="Delete Assay">
@@ -221,6 +274,35 @@
                 <div id="panel-general" class="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div class="grid grid-cols-3 gap-6">
                         <div class="col-span-2 space-y-6">
+                            <!-- Name & Group -->
+                            <div class="glass-panel p-6 rounded-xl">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Assay Name</label>
+                                        <input type="text" id="inp-assay-name"
+                                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                                            placeholder="Assay name" oninput="captureAssayName()">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Assay Group <span class="text-slate-300 normal-case font-normal">(optional)</span></label>
+                                        <div id="group-combobox" class="relative">
+                                            <div class="flex">
+                                                <input type="text" id="inp-group"
+                                                    class="flex-1 min-w-0 bg-slate-50/50 border border-slate-200 rounded-l-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                                                    placeholder="Type or select a group…" oninput="captureGeneral(); filterGroupDropdown()" onfocus="openGroupDropdown()" autocomplete="off">
+                                                <button type="button" onclick="toggleGroupDropdown()"
+                                                    class="px-2 bg-slate-100 border border-l-0 border-slate-200 rounded-r-md hover:bg-slate-200 transition-all shadow-sm flex items-center">
+                                                    <svg id="group-chevron" class="w-3.5 h-3.5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                </button>
+                                            </div>
+                                            <div id="group-dropdown"
+                                                class="hidden absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Validity Configuration -->
                             <div class="glass-panel p-6 rounded-xl space-y-4">
                                 <div class="flex justify-between items-center mb-4">
                                     <h4 class="text-sm font-bold text-brand-blue flex items-center gap-2" title="Basic parameters for evaluating the validity of individual PCR runs.">
@@ -688,21 +770,673 @@
                     Rule</button>
             </div>
         </div>
+
+        <div id="firebase-modal"
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden hidden transform transition-all">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Firebase Project Setup</h3>
+                    <p class="text-sm text-slate-400 mt-1">Configure Firestore persistence for the pcrai-assayspecs workspace.</p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Project ID</label>
+                        <input type="text" id="firebase-project-id"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="pcrai-assayspecs">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Admin Email</label>
+                        <input type="email" id="firebase-user-email"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="dboneku@gmail.com">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">API Key</label>
+                        <input type="text" id="firebase-api-key"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="Paste from Firebase web app config">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Auth Domain</label>
+                        <input type="text" id="firebase-auth-domain"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="pcrai-assayspecs.firebaseapp.com">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">App ID</label>
+                        <input type="text" id="firebase-app-id"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="1:123:web:abc">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Messaging Sender ID</label>
+                        <input type="text" id="firebase-messaging-sender-id"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="1234567890">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Storage Bucket</label>
+                        <input type="text" id="firebase-storage-bucket"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="pcrai-assayspecs.firebasestorage.app">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Measurement ID</label>
+                        <input type="text" id="firebase-measurement-id"
+                            class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
+                            placeholder="Optional">
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm text-slate-600">
+                    <p class="font-semibold text-slate-700">Required from Firebase Console</p>
+                    <p>Create or open project <span class="font-mono text-xs">pcrai-assayspecs</span>, enable Firestore, add a Web App, and paste its config values here. Project name and email alone are not enough to derive a valid browser config.</p>
+                    <p id="firebase-sync-message" class="text-xs text-slate-400">Cloud sync is currently disabled. Local browser storage remains active.</p>
+                </div>
+            </div>
+            <div class="p-6 bg-slate-50 flex justify-between items-center gap-3">
+                <button onclick="disableFirebaseSync()"
+                    class="px-5 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Use Local Only</button>
+                <div class="flex gap-3">
+                    <button onclick="closeModal()"
+                        class="px-6 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Cancel</button>
+                    <button onclick="saveFirebaseSettings()"
+                        class="px-8 py-2 text-sm font-bold bg-brand-blue text-white rounded-lg shadow-lg shadow-blue-500/30">Save
+                        Firebase Settings</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Core Data Structure
-        let state = JSON.parse(localStorage.getItem('pcr_console_v2')) || {
-            assays: {}
-        };
+        const LOCAL_STORAGE_KEY = 'pcr_console_v3';
+        const LEGACY_STORAGE_KEYS = [LOCAL_STORAGE_KEY, 'pcr_console_v2', 'pcrai_worksheet'];
+        const DEFAULT_CLIENT_ID = 'client-default';
+        const CODE_FIREBASE_CONFIG = window.PCRAI_FIREBASE_CONFIG || {};
+
+        function sanitizeFirebaseConfig(config) {
+            const input = config && typeof config === 'object' ? config : {};
+            const cleaned = {};
+
+            Object.entries(input).forEach(([key, value]) => {
+                if (typeof value !== 'string') return;
+                const trimmed = value.trim();
+                if (!trimmed || trimmed.startsWith('PASTE_')) return;
+                cleaned[key] = trimmed;
+            });
+
+            return cleaned;
+        }
+
+        const PRELOADED_FIREBASE_CONFIG = sanitizeFirebaseConfig(CODE_FIREBASE_CONFIG);
+
+        function createDefaultWestgard() {
+            return {
+                '1-2s': { enabled: true, level: 'warning', multiRun: false },
+                '1-3s': { enabled: true, level: 'error', multiRun: false },
+                '2-2s': { enabled: true, level: 'error', multiRun: false },
+                'R-4s': { enabled: false, level: 'error', multiRun: false },
+                '4-1s': { enabled: false, level: 'warning', multiRun: true },
+                '10-x': { enabled: false, level: 'warning', multiRun: true }
+            };
+        }
+
+        function createEmptyAssay(id, name) {
+            return {
+                id,
+                name,
+                general: {
+                    assayMode: 'qual',
+                    sampleType: [],
+                    testCode: '',
+                    group: '',
+                    evalThreshold: 0.2,
+                    maxCycles: 45,
+                    inhibition: true,
+                    quantMode: 'stored',
+                    units: 'copies/mL',
+                    rounding: 'none',
+                    slope: -3.3,
+                    intercept: 40,
+                    r2: 0.99
+                },
+                targets: {},
+                controls: {},
+                rules: [],
+                westgard: createDefaultWestgard(),
+                plateLayout: {}
+            };
+        }
+
+        function createEmptyClient(id, name) {
+            return {
+                id,
+                name,
+                assays: {},
+                createdAt: new Date().toISOString()
+            };
+        }
+
+        function getStoredState() {
+            for (const key of LEGACY_STORAGE_KEYS) {
+                const raw = localStorage.getItem(key);
+                if (!raw) continue;
+                try {
+                    return JSON.parse(raw);
+                } catch (error) {
+                    console.error(`Failed to parse saved state for ${key}`, error);
+                }
+            }
+            return null;
+        }
+
+        function normalizeState(rawState) {
+            const baseState = rawState && typeof rawState === 'object' ? rawState : {};
+            const firebase = {
+                enabled: Boolean(baseState.firebase?.enabled),
+                projectId: baseState.firebase?.projectId || PRELOADED_FIREBASE_CONFIG.projectId || 'pcrai-assayspecs',
+                apiKey: baseState.firebase?.apiKey || PRELOADED_FIREBASE_CONFIG.apiKey || '',
+                authDomain: baseState.firebase?.authDomain || PRELOADED_FIREBASE_CONFIG.authDomain || '',
+                appId: baseState.firebase?.appId || PRELOADED_FIREBASE_CONFIG.appId || '',
+                storageBucket: baseState.firebase?.storageBucket || PRELOADED_FIREBASE_CONFIG.storageBucket || '',
+                messagingSenderId: baseState.firebase?.messagingSenderId || PRELOADED_FIREBASE_CONFIG.messagingSenderId || '',
+                measurementId: baseState.firebase?.measurementId || PRELOADED_FIREBASE_CONFIG.measurementId || '',
+                userEmail: baseState.firebase?.userEmail || PRELOADED_FIREBASE_CONFIG.userEmail || 'dboneku@gmail.com'
+            };
+
+            if (!baseState.firebase && hasPreloadedFirebaseConfig()) {
+                firebase.enabled = hasCompleteFirebaseConfigValues(firebase);
+            }
+
+            let normalizedClients = {};
+            let activeClientId = baseState.activeClientId;
+
+            if (baseState.clients && typeof baseState.clients === 'object' && Object.keys(baseState.clients).length > 0) {
+                Object.entries(baseState.clients).forEach(([clientId, client]) => {
+                    normalizedClients[clientId] = {
+                        ...createEmptyClient(clientId, client?.name || 'Untitled Client'),
+                        ...client,
+                        assays: client?.assays || {}
+                    };
+                });
+            } else {
+                normalizedClients[DEFAULT_CLIENT_ID] = {
+                    ...createEmptyClient(DEFAULT_CLIENT_ID, baseState.clientName || 'Default Client'),
+                    assays: baseState.assays || {}
+                };
+                activeClientId = DEFAULT_CLIENT_ID;
+            }
+
+            if (!activeClientId || !normalizedClients[activeClientId]) {
+                activeClientId = Object.keys(normalizedClients)[0] || DEFAULT_CLIENT_ID;
+            }
+
+            return attachStateAliases({
+                version: 3,
+                clients: normalizedClients,
+                activeClientId,
+                firebase
+            });
+        }
+
+        function attachStateAliases(nextState) {
+            if (!nextState.clients || Object.keys(nextState.clients).length === 0) {
+                nextState.clients = {
+                    [DEFAULT_CLIENT_ID]: createEmptyClient(DEFAULT_CLIENT_ID, 'Default Client')
+                };
+            }
+
+            if (!nextState.activeClientId || !nextState.clients[nextState.activeClientId]) {
+                nextState.activeClientId = Object.keys(nextState.clients)[0];
+            }
+
+            nextState.assays = nextState.clients[nextState.activeClientId].assays;
+            return nextState;
+        }
+
+        function getActiveClient() {
+            return state.clients[state.activeClientId];
+        }
+
+        function persistState() {
+            const snapshot = {
+                version: state.version,
+                clients: state.clients,
+                activeClientId: state.activeClientId,
+                firebase: state.firebase
+            };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(snapshot));
+        }
+
+        let firebaseAppInstance = null;
+        let firestoreDb = null;
+        let cloudSaveTimer = null;
+        let currentUser = null;
+        let firebaseAuthInstance = null;
+        const ALLOWED_EMAIL = 'dboneku@gmail.com';
+
+        function hasCompleteFirebaseConfigValues(config) {
+            return Boolean(
+                config.projectId &&
+                config.apiKey &&
+                config.authDomain &&
+                config.appId &&
+                config.messagingSenderId
+            );
+        }
+
+        function hasPreloadedFirebaseConfig() {
+            return hasCompleteFirebaseConfigValues({
+                projectId: PRELOADED_FIREBASE_CONFIG.projectId || 'pcrai-assayspecs',
+                apiKey: PRELOADED_FIREBASE_CONFIG.apiKey,
+                authDomain: PRELOADED_FIREBASE_CONFIG.authDomain,
+                appId: PRELOADED_FIREBASE_CONFIG.appId,
+                messagingSenderId: PRELOADED_FIREBASE_CONFIG.messagingSenderId
+            });
+        }
+
+        function getFirebaseConfig() {
+            return {
+                apiKey: state.firebase.apiKey,
+                authDomain: state.firebase.authDomain,
+                projectId: state.firebase.projectId,
+                storageBucket: state.firebase.storageBucket,
+                messagingSenderId: state.firebase.messagingSenderId,
+                appId: state.firebase.appId,
+                measurementId: state.firebase.measurementId || undefined
+            };
+        }
+
+        function hasCompleteFirebaseConfig() {
+            return hasCompleteFirebaseConfigValues(state.firebase);
+        }
+
+        function updateFirebaseStatus(message = '') {
+            const badge = document.getElementById('firebase-status');
+            const syncMessage = document.getElementById('firebase-sync-message');
+            if (!badge) return;
+
+            badge.className = 'px-2.5 py-1 text-[10px] font-bold rounded-full uppercase tracking-[0.2em]';
+
+            if (!state.firebase.enabled) {
+                badge.classList.add('bg-white/10', 'text-white/70');
+                badge.innerText = 'Local Only';
+                if (syncMessage) syncMessage.innerText = message || 'Cloud sync is currently disabled. Local browser storage remains active.';
+                return;
+            }
+
+            if (firestoreDb && currentUser) {
+                badge.classList.add('bg-emerald-400/20', 'text-emerald-100');
+                badge.innerText = 'Cloud Ready';
+                if (syncMessage) syncMessage.innerText = message || `Signed in as ${currentUser.email} — ${state.firebase.projectId}.`;
+                return;
+            }
+
+            if (firestoreDb && !currentUser) {
+                badge.classList.add('bg-amber-400/20', 'text-amber-100');
+                badge.innerText = 'Sign In';
+                if (syncMessage) syncMessage.innerText = message || 'Authentication required to sync cloud data.';
+                return;
+            }
+
+            badge.classList.add('bg-amber-400/20', 'text-amber-100');
+            badge.innerText = 'Config Needed';
+            if (syncMessage) syncMessage.innerText = message || 'Firebase is enabled, but the web app configuration is incomplete or not connected yet.';
+        }
+
+        function populateFirebaseForm() {
+            document.getElementById('firebase-project-id').value = state.firebase.projectId || 'pcrai-assayspecs';
+            document.getElementById('firebase-user-email').value = state.firebase.userEmail || 'dboneku@gmail.com';
+            document.getElementById('firebase-api-key').value = state.firebase.apiKey || '';
+            document.getElementById('firebase-auth-domain').value = state.firebase.authDomain || '';
+            document.getElementById('firebase-app-id').value = state.firebase.appId || '';
+            document.getElementById('firebase-messaging-sender-id').value = state.firebase.messagingSenderId || '';
+            document.getElementById('firebase-storage-bucket').value = state.firebase.storageBucket || '';
+            document.getElementById('firebase-measurement-id').value = state.firebase.measurementId || '';
+            updateFirebaseStatus();
+        }
+
+        async function ensureFirebaseReady(forceReinitialize = false) {
+            if (!state.firebase.enabled || !hasCompleteFirebaseConfig() || typeof firebase === 'undefined') {
+                firestoreDb = null;
+                updateFirebaseStatus();
+                return false;
+            }
+
+            try {
+                const appName = 'pcrai-assayspecs-console';
+                const existingNamedApp = firebase.apps.find(app => app.name === appName) || null;
+                if (forceReinitialize && existingNamedApp) {
+                    await existingNamedApp.delete();
+                    firebaseAppInstance = null;
+                    firestoreDb = null;
+                }
+
+                if (!firebaseAppInstance) {
+                    firebaseAppInstance = firebase.apps.find(app => app.name === appName) || firebase.initializeApp(getFirebaseConfig(), appName);
+                    firestoreDb = firebase.firestore(firebaseAppInstance);
+                    initAuth();
+                    try {
+                        await firestoreDb.enablePersistence({ synchronizeTabs: true });
+                    } catch (persistenceError) {
+                        console.warn('Firestore persistence could not be enabled.', persistenceError);
+                    }
+                }
+
+                updateFirebaseStatus();
+                return true;
+            } catch (error) {
+                console.error('Firebase initialization failed.', error);
+                firestoreDb = null;
+                updateFirebaseStatus(`Firebase connection failed: ${error.message}`);
+                return false;
+            }
+        }
+
+        function getCloudDocRef() {
+            if (!firestoreDb || !currentUser) return null;
+            return firestoreDb.collection('assayConsole').doc(currentUser.uid);
+        }
+
+        function buildCloudSnapshot() {
+            return {
+                version: state.version,
+                clients: state.clients,
+                activeClientId: state.activeClientId,
+                updatedAt: new Date().toISOString(),
+                updatedBy: state.firebase.userEmail || ''
+            };
+        }
+
+        async function syncStateToFirebase(reason = 'autosave') {
+            const ready = await ensureFirebaseReady();
+            if (!ready || !currentUser) return;
+
+            try {
+                await getCloudDocRef().set(buildCloudSnapshot());
+                updateFirebaseStatus(`Last cloud sync completed via ${reason} at ${new Date().toLocaleTimeString()}.`);
+            } catch (error) {
+                console.error('Cloud sync failed.', error);
+                updateFirebaseStatus(`Cloud sync failed: ${error.message}`);
+            }
+        }
+
+        function scheduleCloudSync(reason = 'autosave') {
+            if (!state.firebase.enabled) return;
+            clearTimeout(cloudSaveTimer);
+            cloudSaveTimer = setTimeout(() => {
+                syncStateToFirebase(reason);
+            }, 700);
+        }
+
+        async function loadStateFromFirebase() {
+            const ready = await ensureFirebaseReady();
+            if (!ready || !currentUser) return false;
+
+            try {
+                const snapshot = await getCloudDocRef().get();
+                if (!snapshot.exists) {
+                    await syncStateToFirebase('initial publish');
+                    return true;
+                }
+
+                const cloudState = snapshot.data();
+                if (cloudState && cloudState.clients) {
+                    state = normalizeState({
+                        ...cloudState,
+                        firebase: state.firebase
+                    });
+                    activeAssayId = state.assays[activeAssayId] ? activeAssayId : Object.keys(state.assays)[0] || null;
+                    persistState();
+                    renderSidebar();
+                    if (activeAssayId) {
+                        selectAssay(activeAssayId, state.activeClientId);
+                    } else {
+                        showEmptyWorkspace('Select a client and create a test menu to begin configuration.');
+                    }
+                    updateFirebaseStatus(`Loaded cloud data from ${state.firebase.projectId}.`);
+                }
+                return true;
+            } catch (error) {
+                console.error('Failed to load cloud state.', error);
+                updateFirebaseStatus(`Failed to load cloud data: ${error.message}`);
+                return false;
+            }
+        }
+
+        function openFirebaseModal() {
+            populateFirebaseForm();
+            openModal('firebase-modal');
+        }
+
+        async function saveFirebaseSettings() {
+            state.firebase.projectId = document.getElementById('firebase-project-id').value.trim() || 'pcrai-assayspecs';
+            state.firebase.userEmail = document.getElementById('firebase-user-email').value.trim() || 'dboneku@gmail.com';
+            state.firebase.apiKey = document.getElementById('firebase-api-key').value.trim();
+            state.firebase.authDomain = document.getElementById('firebase-auth-domain').value.trim();
+            state.firebase.appId = document.getElementById('firebase-app-id').value.trim();
+            state.firebase.messagingSenderId = document.getElementById('firebase-messaging-sender-id').value.trim();
+            state.firebase.storageBucket = document.getElementById('firebase-storage-bucket').value.trim();
+            state.firebase.measurementId = document.getElementById('firebase-measurement-id').value.trim();
+            state.firebase.enabled = hasCompleteFirebaseConfig();
+
+            saveState();
+
+            if (!state.firebase.enabled) {
+                updateFirebaseStatus('Saved locally. Add the full Firebase web app config to enable cloud sync.');
+                return;
+            }
+
+            const connected = await ensureFirebaseReady(true);
+            if (!connected) return;
+
+            await loadStateFromFirebase();
+            closeModal();
+        }
+
+        async function disableFirebaseSync() {
+            state.firebase.enabled = false;
+            const existingNamedApp = typeof firebase !== 'undefined' ? firebase.apps.find(app => app.name === 'pcrai-assayspecs-console') : null;
+            if (existingNamedApp) {
+                await existingNamedApp.delete();
+            }
+            firestoreDb = null;
+            firebaseAppInstance = null;
+            firebaseAuthInstance = null;
+            currentUser = null;
+            updateUserUI(null);
+            saveState();
+            updateFirebaseStatus('Cloud sync disabled. Local browser storage remains active.');
+            closeModal();
+        }
+
+        function showLoginScreen(errorMessage = '') {
+            const screen = document.getElementById('login-screen');
+            if (screen) screen.classList.remove('hidden');
+            const errEl = document.getElementById('login-error');
+            if (errEl) {
+                if (errorMessage) {
+                    errEl.textContent = errorMessage;
+                    errEl.classList.remove('hidden');
+                } else {
+                    errEl.classList.add('hidden');
+                }
+            }
+        }
+
+        function hideLoginScreen() {
+            const screen = document.getElementById('login-screen');
+            if (screen) screen.classList.add('hidden');
+        }
+
+        function updateUserUI(user) {
+            const userInfo = document.getElementById('user-info');
+            const avatar = document.getElementById('user-avatar');
+            const email = document.getElementById('user-email');
+            if (user) {
+                if (avatar) avatar.src = user.photoURL || '';
+                if (email) email.textContent = user.email;
+                if (userInfo) userInfo.classList.remove('hidden'), userInfo.classList.add('flex');
+            } else {
+                if (userInfo) userInfo.classList.add('hidden'), userInfo.classList.remove('flex');
+            }
+        }
+
+        function initAuth() {
+            if (!firebaseAppInstance || firebaseAuthInstance) return;
+            try {
+                firebaseAuthInstance = firebase.auth(firebaseAppInstance);
+                firebaseAuthInstance.onAuthStateChanged(async (user) => {
+                    if (!user) {
+                        currentUser = null;
+                        updateUserUI(null);
+                        updateFirebaseStatus();
+                        showLoginScreen();
+                        return;
+                    }
+                    if (user.email !== ALLOWED_EMAIL) {
+                        currentUser = null;
+                        updateUserUI(null);
+                        await firebaseAuthInstance.signOut();
+                        showLoginScreen('Access is restricted to authorized users only.');
+                        return;
+                    }
+                    currentUser = user;
+                    updateUserUI(user);
+                    hideLoginScreen();
+                    updateFirebaseStatus();
+                    await loadStateFromFirebase();
+                });
+            } catch (err) {
+                console.error('Auth initialization failed.', err);
+            }
+        }
+
+        async function signInWithGoogle() {
+            const btn = document.getElementById('google-signin-btn');
+            if (btn) btn.disabled = true;
+            try {
+                await ensureFirebaseReady();
+                if (!firebaseAuthInstance) {
+                    showLoginScreen('Firebase is not fully configured. Check firebase-web-config.js.');
+                    return;
+                }
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.setCustomParameters({ login_hint: ALLOWED_EMAIL });
+                await firebaseAuthInstance.signInWithPopup(provider);
+                // onAuthStateChanged handles the rest
+            } catch (err) {
+                console.error('Google sign-in failed.', err);
+                showLoginScreen(`Sign-in failed: ${err.message}`);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function signOutUser() {
+            if (firebaseAuthInstance) {
+                await firebaseAuthInstance.signOut();
+            }
+            currentUser = null;
+            updateUserUI(null);
+            updateFirebaseStatus();
+            showLoginScreen();
+        }
+
+        let state = normalizeState(getStoredState());
 
         let activeAssayId = null;
         let currentTab = 'general';
         let editingRuleIdx = null;
+        const collapsedGroups = {};
+        const collapsedClients = {};
 
         function saveState() {
-            localStorage.setItem('pcr_console_v2', JSON.stringify(state));
+            attachStateAliases(state);
+            persistState();
             renderSidebar();
+            updateFirebaseStatus();
+            scheduleCloudSync();
+        }
+
+        function showEmptyWorkspace(message) {
+            document.getElementById('empty-state').classList.remove('hidden');
+            document.getElementById('assay-header').classList.add('hidden');
+            document.getElementById('assay-content').classList.add('hidden');
+            if (message) {
+                const emptyText = document.querySelector('#empty-state p');
+                if (emptyText) emptyText.innerText = message;
+            }
+        }
+
+        function findClientIdByAssay(assayId) {
+            return Object.values(state.clients).find(client => client.assays && client.assays[assayId])?.id || null;
+        }
+
+        function selectClient(clientId) {
+            if (!state.clients[clientId]) return;
+
+            state.activeClientId = clientId;
+            attachStateAliases(state);
+
+            if (!state.assays[activeAssayId]) {
+                activeAssayId = Object.keys(state.assays)[0] || null;
+            }
+
+            persistState();
+            renderSidebar();
+
+            if (activeAssayId) {
+                selectAssay(activeAssayId, clientId);
+                return;
+            }
+
+            showEmptyWorkspace('Select a test menu for this client or create a new one to begin configuration.');
+        }
+
+        function createNewClient() {
+            const name = prompt('Enter Client Name:');
+            if (!name) return;
+
+            const id = 'CL-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+            state.clients[id] = createEmptyClient(id, name.trim());
+            state.activeClientId = id;
+            activeAssayId = null;
+            saveState();
+            showEmptyWorkspace('Select a test menu for this client or create a new one to begin configuration.');
+        }
+
+        function deleteClient(clientId, event) {
+            if (event) event.stopPropagation();
+            const client = state.clients[clientId];
+            if (!client) return;
+
+            const assayCount = Object.keys(client.assays || {}).length;
+            if (!confirm(`Delete client "${client.name}" and ${assayCount} stored test menu(s)?`)) return;
+
+            delete state.clients[clientId];
+
+            if (Object.keys(state.clients).length === 0) {
+                state.clients[DEFAULT_CLIENT_ID] = createEmptyClient(DEFAULT_CLIENT_ID, 'Default Client');
+            }
+
+            if (state.activeClientId === clientId) {
+                state.activeClientId = Object.keys(state.clients)[0];
+                attachStateAliases(state);
+                activeAssayId = Object.keys(state.assays)[0] || null;
+            }
+
+            saveState();
+
+            if (activeAssayId) {
+                selectAssay(activeAssayId, state.activeClientId);
+            } else {
+                showEmptyWorkspace('Select a test menu for this client or create a new one to begin configuration.');
+            }
         }
 
         // --- Navigation ---
@@ -721,90 +1455,164 @@
                 return { label: 'Draft', class: 'status-draft' };
             };
 
-            Object.values(state.assays).forEach(assay => {
-                const health = getHealth(assay);
-                const itemContainer = document.createElement('div');
-                itemContainer.className = "group relative border-b border-slate-50";
+            Object.values(state.clients).forEach(client => {
+                const isClientCollapsed = collapsedClients[client.id] === true;
+                const clientCard = document.createElement('div');
+                clientCard.className = `mx-3 my-2 rounded-2xl border overflow-hidden ${state.activeClientId === client.id ? 'border-brand-blue/40 bg-brand-blue/5' : 'border-slate-200 bg-white'}`;
 
-                const btn = document.createElement('button');
-                btn.className = `w-full px-5 py-5 text-left flex flex-col gap-2 transition-all ${activeAssayId === assay.id ? 'sidebar-item-active' : 'hover:bg-slate-50 text-slate-600'}`;
-                btn.onclick = () => selectAssay(assay.id);
-
-                const nameDiv = document.createElement('div');
-                nameDiv.className = "flex justify-between items-start";
-                nameDiv.innerHTML = `
-                    <div class="flex flex-col">
-                        <span class="font-bold text-sm tracking-tight">${assay.name}</span>
-                        <span class="text-[9px] text-slate-400 font-bold uppercase">${assay.id}</span>
-                    </div>
-                    <span class="status-badge ${health.class}">${health.label}</span>
-                `;
-
-                const sampleTypes = Array.isArray(assay.general?.sampleType) ? assay.general.sampleType.slice(0, 2).join(', ') : (assay.general?.sampleType || 'No Type');
-                const metaDiv = document.createElement('div');
-                metaDiv.className = "flex items-center gap-3 mt-1";
-                metaDiv.innerHTML = `
-                    <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
-                        ${Object.keys(assay.targets || {}).length}
-                    </div>
-                    <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
-                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                        ${(assay.rules || []).length}
+                const clientHeader = document.createElement('div');
+                clientHeader.className = `px-4 py-3 ${isClientCollapsed ? '' : 'border-b border-slate-100'}`;
+                clientHeader.innerHTML = `
+                    <div class="flex items-start justify-between gap-3">
+                        <button onclick="selectClient('${client.id}')" class="text-left flex-1 min-w-0">
+                            <span class="block text-[10px] font-bold uppercase tracking-[0.2em] ${state.activeClientId === client.id ? 'text-brand-blue' : 'text-slate-400'}">Client</span>
+                            <span class="block text-sm font-bold text-slate-800 truncate">${client.name}</span>
+                            <span class="block text-[10px] text-slate-400 mt-1">${Object.keys(client.assays || {}).length} test menu(s)</span>
+                        </button>
+                        <div class="flex items-center gap-1">
+                            <button onclick="createNewAssay('${client.id}')" class="px-2 py-1 text-[10px] font-bold rounded bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white transition-all">+ Test</button>
+                            <button onclick="renameClient('${client.id}', event)" class="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded transition-all" title="Rename Client">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                            </button>
+                            <button onclick="deleteClient('${client.id}', event)" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="Delete Client">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                            <button onclick="collapsedClients['${client.id}'] = !collapsedClients['${client.id}']; renderSidebar();" class="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded transition-all" title="${isClientCollapsed ? 'Expand' : 'Collapse'}">
+                                <svg class="w-3.5 h-3.5 transition-transform ${isClientCollapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 `;
+                clientCard.appendChild(clientHeader);
 
-                const delBtn = document.createElement('button');
-                delBtn.className = "absolute right-4 bottom-5 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all";
-                delBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
-                delBtn.onclick = (e) => deleteAssay(assay.id, e);
-                delBtn.title = "Delete Assay";
+                if (isClientCollapsed) { list.appendChild(clientCard); return; }
 
-                btn.appendChild(nameDiv);
-                btn.appendChild(metaDiv);
-                itemContainer.appendChild(btn);
-                itemContainer.appendChild(delBtn);
-                list.appendChild(itemContainer);
+                const assays = Object.values(client.assays || {});
+                if (assays.length === 0) {
+                    const emptyClient = document.createElement('div');
+                    emptyClient.className = 'px-4 py-4 text-xs text-slate-400';
+                    emptyClient.innerText = 'No test menus stored for this client yet.';
+                    clientCard.appendChild(emptyClient);
+                }
+
+                const makeAssayItem = (assay, indent) => {
+                    const health = getHealth(assay);
+                    const itemContainer = document.createElement('div');
+                    itemContainer.className = 'group relative border-t border-slate-100';
+
+                    const btn = document.createElement('button');
+                    btn.className = `w-full ${indent ? 'pl-6 pr-4' : 'px-4'} py-4 text-left flex flex-col gap-2 transition-all ${activeAssayId === assay.id && state.activeClientId === client.id ? 'sidebar-item-active bg-white' : 'hover:bg-slate-50 text-slate-600'}`;
+                    btn.onclick = () => selectAssay(assay.id, client.id);
+
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'flex justify-between items-start gap-3';
+                    nameDiv.innerHTML = `
+                        <div class="flex flex-col min-w-0">
+                            <span class="font-bold text-sm tracking-tight truncate">${assay.name}</span>
+                        </div>
+                        <span class="status-badge ${health.class}">${health.label}</span>
+                    `;
+
+                    const metaDiv = document.createElement('div');
+                    metaDiv.className = 'flex items-center gap-3 mt-1';
+                    metaDiv.innerHTML = `
+                        <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                            ${Object.keys(assay.targets || {}).length}
+                        </div>
+                        <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                            ${(assay.rules || []).length}
+                        </div>
+                    `;
+
+                    const delBtn = document.createElement('button');
+                    delBtn.className = `absolute ${indent ? 'right-3' : 'right-4'} bottom-4 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all`;
+                    delBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
+                    delBtn.onclick = (e) => deleteAssay(assay.id, e, client.id);
+                    delBtn.title = 'Delete Test Menu';
+
+                    btn.appendChild(nameDiv);
+                    btn.appendChild(metaDiv);
+                    itemContainer.appendChild(btn);
+                    itemContainer.appendChild(delBtn);
+                    return itemContainer;
+                };
+
+                // Separate ungrouped vs grouped assays
+                const grouped = {};
+                const ungrouped = [];
+                assays.forEach(assay => {
+                    const grp = (assay.general?.group || '').trim();
+                    if (grp) {
+                        if (!grouped[grp]) grouped[grp] = [];
+                        grouped[grp].push(assay);
+                    } else {
+                        ungrouped.push(assay);
+                    }
+                });
+
+                // Render ungrouped assays directly
+                ungrouped.forEach(assay => clientCard.appendChild(makeAssayItem(assay, false)));
+
+                // Render groups with collapsible headers
+                Object.entries(grouped).forEach(([groupName, groupAssays]) => {
+                    const groupKey = client.id + '|' + groupName;
+                    const isCollapsed = collapsedGroups[groupKey] === true;
+
+                    const groupHeader = document.createElement('div');
+                    groupHeader.className = 'border-t border-slate-100 px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-slate-50 select-none';
+                    groupHeader.innerHTML = `
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">${groupName}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-slate-400">${groupAssays.length}</span>
+                            <svg class="w-3 h-3 text-slate-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </div>`;
+                    groupHeader.onclick = () => { collapsedGroups[groupKey] = !collapsedGroups[groupKey]; renderSidebar(); };
+                    clientCard.appendChild(groupHeader);
+
+                    if (!isCollapsed) {
+                        groupAssays.forEach(assay => clientCard.appendChild(makeAssayItem(assay, true)));
+                    }
+                });
+
+                list.appendChild(clientCard);
             });
         }
 
-        function createNewAssay() {
+        function createNewAssay(clientId = state.activeClientId) {
+            if (!state.clients[clientId]) return;
+
             const id = 'A-' + Math.random().toString(36).substr(2, 4).toUpperCase();
             const name = prompt("Enter Assay Name:");
             if (!name) return;
 
-            state.assays[id] = {
-                id: id,
-                name: name,
-                general: { assayMode: 'qual', sampleType: [], testCode: '', evalThreshold: 0.2, maxCycles: 45, inhibition: true, quantMode: 'stored', units: 'copies/mL', rounding: 'none', slope: -3.3, intercept: 40, r2: 0.99 },
-                targets: {},
-                controls: {},
-                rules: [],
-                westgard: {
-                    '1-2s': { enabled: true, level: 'warning', multiRun: false },
-                    '1-3s': { enabled: true, level: 'error', multiRun: false },
-                    '2-2s': { enabled: true, level: 'error', multiRun: false },
-                    'R-4s': { enabled: false, level: 'error', multiRun: false },
-                    '4-1s': { enabled: false, level: 'warning', multiRun: true },
-                    '10-x': { enabled: false, level: 'warning', multiRun: true }
-                }
-            };
+            state.activeClientId = clientId;
+            attachStateAliases(state);
+            state.assays[id] = createEmptyAssay(id, name.trim());
 
             activeAssayId = id;
             saveState();
-            selectAssay(id);
+            selectAssay(id, clientId);
         }
 
-        function selectAssay(id) {
+        function selectAssay(id, clientId = null) {
+            const resolvedClientId = clientId || findClientIdByAssay(id);
+            if (!resolvedClientId || !state.clients[resolvedClientId]?.assays[id]) return;
+
+            state.activeClientId = resolvedClientId;
+            attachStateAliases(state);
             activeAssayId = id;
             document.getElementById('empty-state').classList.add('hidden');
             document.getElementById('assay-header').classList.remove('hidden');
             document.getElementById('assay-content').classList.remove('hidden');
 
             const assay = state.assays[id];
+            const client = getActiveClient();
             document.getElementById('active-assay-name').innerText = assay.name;
-            document.getElementById('active-assay-id').innerText = assay.id;
+            document.getElementById('active-client-name').innerText = client.name;
 
+            persistState();
             renderSidebar();
             switchTab(currentTab);
             fillGeneralForm();
@@ -847,7 +1655,10 @@
             }
             renderSampleTypeTags();
 
+            document.getElementById('inp-assay-name').value = state.assays[activeAssayId].name || '';
             document.getElementById('inp-test-code').value = g.testCode;
+            document.getElementById('inp-group').value = g.group || '';
+            renderGroupDropdownOptions();
             document.getElementById('inp-eval-threshold').value = g.evalThreshold;
             document.getElementById('inp-max-cycles').value = g.maxCycles;
             document.getElementById('chk-inhibition').checked = g.inhibition;
@@ -863,10 +1674,19 @@
             renderWestgardConfig(w);
         }
 
+        function captureAssayName() {
+            const val = (document.getElementById('inp-assay-name').value || '').trim();
+            if (!val || !activeAssayId) return;
+            state.assays[activeAssayId].name = val;
+            document.getElementById('active-assay-name').innerText = val;
+            saveState();
+        }
+
         function captureGeneral() {
             const g = state.assays[activeAssayId].general;
             // sampleType is managed via tags
             g.testCode = document.getElementById('inp-test-code').value;
+            g.group = (document.getElementById('inp-group').value || '').trim();
             g.evalThreshold = document.getElementById('inp-eval-threshold').value;
             g.maxCycles = document.getElementById('inp-max-cycles').value;
             g.inhibition = document.getElementById('chk-inhibition').checked;
@@ -878,6 +1698,64 @@
             // Assay mode is captured via toggle button
             saveState();
         }
+
+        // --- Group Combo Box ---
+        function getExistingGroups(filter) {
+            const all = [...new Set(Object.values(state.assays).map(a => a.general?.group).filter(Boolean))];
+            return filter ? all.filter(g => g.toLowerCase().includes(filter.toLowerCase())) : all;
+        }
+
+        function renderGroupDropdownOptions(filter) {
+            const dd = document.getElementById('group-dropdown');
+            if (!dd) return;
+            const groups = getExistingGroups(filter);
+            if (groups.length === 0) { dd.innerHTML = '<div class="px-3 py-2 text-xs text-slate-400 italic">No existing groups — type to create one</div>'; return; }
+            dd.innerHTML = '';
+            groups.forEach(grp => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-brand-blue/5 hover:text-brand-blue transition-all flex items-center gap-2';
+                item.innerHTML = `<svg class="w-3 h-3 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>${grp}`;
+                item.onmousedown = (e) => { e.preventDefault(); selectGroup(grp); };
+                dd.appendChild(item);
+            });
+        }
+
+        function openGroupDropdown() {
+            const dd = document.getElementById('group-dropdown');
+            if (!dd) return;
+            renderGroupDropdownOptions(document.getElementById('inp-group').value);
+            dd.classList.remove('hidden');
+            document.getElementById('group-chevron')?.classList.add('rotate-180');
+        }
+
+        function closeGroupDropdown() {
+            document.getElementById('group-dropdown')?.classList.add('hidden');
+            document.getElementById('group-chevron')?.classList.remove('rotate-180');
+        }
+
+        function toggleGroupDropdown() {
+            const dd = document.getElementById('group-dropdown');
+            if (!dd) return;
+            if (dd.classList.contains('hidden')) { document.getElementById('inp-group').focus(); openGroupDropdown(); }
+            else closeGroupDropdown();
+        }
+
+        function filterGroupDropdown() {
+            const dd = document.getElementById('group-dropdown');
+            if (dd && !dd.classList.contains('hidden')) renderGroupDropdownOptions(document.getElementById('inp-group').value);
+        }
+
+        function selectGroup(grp) {
+            document.getElementById('inp-group').value = grp;
+            captureGeneral();
+            closeGroupDropdown();
+            renderSidebar();
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('group-combobox')?.contains(e.target)) closeGroupDropdown();
+        });
 
         function addSampleType() {
             const sel = document.getElementById('sel-sample-type');
@@ -1072,6 +1950,18 @@
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Lot Number</label>
                             <input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.lot}" oninput="updateControl('${cid}', 'lot', this.value)">
                         </div>
+                        <div class="w-36">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Entry Date</label>
+                            <input type="date" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.entryDate || ''}" oninput="updateControl('${cid}', 'entryDate', this.value)">
+                        </div>
+                        <div class="w-36">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Effective Date</label>
+                            <input type="date" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.effectiveDate || ''}" oninput="updateControl('${cid}', 'effectiveDate', this.value)">
+                        </div>
+                        <div class="w-36">
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Expiration Date <span class="text-slate-300">(opt)</span></label>
+                            <input type="date" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.expirationDate || ''}" oninput="updateControl('${cid}', 'expirationDate', this.value)">
+                        </div>
                         <div class="w-20">
                             <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Mean (Ct)</label>
                             <input type="number" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.mean}" oninput="updateControl('${cid}', 'mean', this.value)">
@@ -1105,7 +1995,7 @@
 
         function addControl() {
             const cid = 'C' + Date.now();
-            state.assays[activeAssayId].controls[cid] = { name: 'Control', runfileLabel: '', lot: '', mean: 25, sd: 1, type: 'PC' };
+            state.assays[activeAssayId].controls[cid] = { name: 'Control', runfileLabel: '', lot: '', mean: 25, sd: 1, type: 'PC', entryDate: '', effectiveDate: '', expirationDate: '' };
             saveState();
             renderControls();
         }
@@ -1154,8 +2044,7 @@
 
         function openRuleBuilder(idx = null) {
             editingRuleIdx = idx;
-            document.getElementById('modal-backdrop').classList.remove('hidden');
-            document.getElementById('rule-builder-modal').classList.remove('hidden');
+            openModal('rule-builder-modal');
 
             const expContainer = document.getElementById('expression-rows');
             expContainer.innerHTML = '';
@@ -1231,9 +2120,15 @@
             renderRules();
         }
 
+        function openModal(modalId) {
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.querySelectorAll('#modal-backdrop > div').forEach(modal => modal.classList.add('hidden'));
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
         function closeModal() {
             document.getElementById('modal-backdrop').classList.add('hidden');
-            document.getElementById('rule-builder-modal').classList.add('hidden');
+            document.querySelectorAll('#modal-backdrop > div').forEach(modal => modal.classList.add('hidden'));
         }
 
         function deleteRule(idx) {
@@ -1258,40 +2153,177 @@
         function exportToExcel() {
             const wb = XLSX.utils.book_new();
 
-            // For Excel, we flatten the hierarchy back into the user's expected tabs
-            const assaysArr = [];
-            const targetsArr = [];
-            const controlsArr = [];
-            const rulesArr = [];
-            const lodArr = [];
+            const addSheet = (name, headers, rows) => {
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers, ...rows]), name);
+            };
+            const headerOnly = (name, headers) => {
+                XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([headers]), name);
+            };
 
-            Object.values(state.assays).forEach(a => {
-                assaysArr.push([a.id, a.name, a.general.sampleType, '-', a.general.testCode, a.general.rounding]);
+            // Collect assays for the active client only
+            const activeClient = state.clients[state.activeClientId];
+            const allAssays = Object.values((activeClient && activeClient.assays) || {});
 
-                Object.values(a.targets).forEach(t => {
-                    targetsArr.push([a.id, t.name, t.type, t.indicator, t.threshold]);
-                    lodArr.push([a.id, t.name, 'CT', 'LOD', 'Limit of Detection', t.threshold]);
-                });
+            // 1. Alerts
+            headerOnly('Alerts', ['ALERT', 'OUTCOME MESSAGE', 'MIXES', 'THERMOCYCLERS', 'WELL TYPE', 'THRESHOLD TYPE', 'THRESHOLD VALUE', 'FREQUENCY INTERVAL', 'SCHEDULE AT', 'INFORMS', 'ENABLED', 'SYSTEM ERROR CODE', 'SYSTEM LIMS STATUS']);
 
-                Object.values(a.controls).forEach(c => {
-                    controlsArr.push([a.id, c.name, '-', c.type]);
-                    // Add to a QC Ranges tab as well
-                    // headers: ["Assay ID", "Control Name", "Qual/Quant", "Range Name (lot)", "Range Start Date", "SD", "Mean"]
-                    // Note: This is an simplified mapping
-                });
+            // 2. Client Configurations
+            headerOnly('Client Configurations', ['NAME', 'LABEL', 'TYPE', 'VALUE', 'OPTIONS', 'VALIDATION RULES']);
 
-                a.rules.forEach((r, idx) => {
-                    rulesArr.push([idx + 1, a.id, '-', 'All', 'Outcome', r.expressionStr, '-', r.outcome, 'Error', 'Verify']);
+            // 3. Combined Outcomes
+            headerOnly('Combined Outcomes', ['NAME', 'CODE', 'PRIORITY', 'ROLE', 'OUTCOME TYPE', 'WELL ERROR CODE / LIMS CODE', 'TARGET ERROR CODE', 'TARGET TO HAVE ERROR', 'ALLOW OTHER RUNS TO BE USED', 'IS REPEAT', 'MIXES MISSING', 'MIX', 'MIX LEVEL OUTCOME TYPE', 'MIX LEVEL WELL ERROR CODE / LIMS CODE', 'MIX MISSING', 'IC_FAILED', 'USE_LATEST_UPLOADED_WELL', 'REQUIRED HISTORY OUTCOMES', 'TARGET', 'RESULT', 'MINIMUM CT', 'MAXIMUM CT', 'MINIMUM QUANTITY', 'MAXIMUM QUANTITY', 'CLS DISCREPANCY REQUIRED', 'CT DISCREPANCY REQUIRED', 'SPECIMEN']);
+
+            // 4. Control Labels — one row per unique (role name + type), listing all assay names
+            const ctrlLabelMap = {};
+            allAssays.forEach(a => {
+                Object.values(a.controls || {}).forEach(c => {
+                    const key = c.name + '|' + c.type;
+                    if (!ctrlLabelMap[key]) ctrlLabelMap[key] = { name: c.name, type: c.type, runfileLabel: c.runfileLabel || '', mixes: [] };
+                    if (!ctrlLabelMap[key].mixes.includes(a.name)) ctrlLabelMap[key].mixes.push(a.name);
                 });
             });
+            addSheet('Control Labels',
+                ['ROLE', 'ROLE TYPE', 'MIX', 'IS EXTRACTED', 'BACKUP MIXES', 'LABELS IN IMPORTED RUNFILE'],
+                Object.values(ctrlLabelMap).map(e => [e.name, e.type, e.mixes.join(' | '), 'Y', '', e.runfileLabel])
+            );
 
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "Assay", "Sample Type", "Run Label", "Test Code", "Rounding"], ...assaysArr]), "Assays");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "Target Name", "Target Type", "Indicator", "Threshold"], ...targetsArr]), "Targets");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "Control Name", "Run Label", "Type"], ...controlsArr]), "Controls");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Order", "Assay ID", "Target", "Role", "Name", "Trigger", "Full Trigger", "Outcome", "Flag", "Actions"], ...rulesArr]), "Rules");
-            XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["Assay ID", "TARGET", "MODE", "GROUP", "DESCRIPTION", "BOUNDARY"], ...lodArr]), "Lod Settings");
+            // 5. Cross Contamination Limits
+            headerOnly('Cross Contamination Limits', ['MIX', 'TARGET', 'DYE', 'QUANT OR CT', 'POTENTIAL CONTAMINATED', 'POTENTIAL CONTAMINATING']);
 
-            XLSX.writeFile(wb, "Assay_Config_Export.xlsx");
+            // 6. Curve Control Limits
+            headerOnly('Curve Control Limits', ['MIX', 'TARGET', 'DYE', 'SAMPLE ROLE', 'LOWER BOUND CT', 'UPPER BOUND CT']);
+
+            // 7. Delta CT
+            headerOnly('Delta CT', ['FIRST MIX', 'FIRST TARGET', 'SECOND MIX', 'SECOND TARGET', 'DELTA CT']);
+
+            // 8. Error Codes
+            headerOnly('Error Codes', ['ERROR CODE', 'ERROR MESSAGE', 'ERROR TYPE', 'ERROR AFFECTS', 'DEFAULT LIMS EXPORT', 'PREVENTS ANALYSIS', 'IS INHIBITED', 'CAUSES MISSING MIXES']);
+
+            // 9. Error Resolutions
+            headerOnly('Error Resolutions', ['ERROR MESSAGE', 'ERROR CODE', 'RESOLUTION NUMBER', 'RESOLUTION MESSAGE', 'DROPDOWN CODE', 'DROPDOWN MESSAGE', 'OTHER WELLS AFFECTED BY RESOLUTION', 'RULES SKIP ON RE-ANALYSIS', 'AFFECTED WELLS OUTCOME ON RESOLUTION', 'LIMS MESSAGE', 'IS DEFAULT RESOLUTION', 'LEVEL', 'AFFECTED WELL TYPE']);
+
+            // 10. Extractions
+            addSheet('Extractions', ['Extraction Model', 'Extraction Instrument'], [['default_model', 'default_instrument']]);
+
+            // 11. Features
+            headerOnly('Features', ['NAME', 'CODE', 'IS ENABLED']);
+
+            // 12. Help Items
+            headerOnly('Help Items', ['ORDER', 'TITLE', 'DESCRIPTION', 'TAGS', 'VIDEO', 'PAGES AVAILABLE']);
+
+            // 13. Known Quantities
+            headerOnly('Known Quantities', ['ROLE', 'MIX', 'TARGET', 'QUANTITY']);
+
+            // 14. Lims Exports
+            headerOnly('Lims Exports', ['CODE', 'MESSAGE', 'TYPE', 'RESULT', 'DOES PREVENT ANALYSE', 'CAUSES MISSING MIXES', 'IS INHIBITED']);
+
+            // 15. Mix and Targets
+            const mixTargetRows = [];
+            allAssays.forEach(a => {
+                const isQuant = a.general.assayMode === 'quant' ? 'TRUE' : 'FALSE';
+                Object.values(a.targets || {}).forEach((t, idx) => {
+                    mixTargetRows.push([
+                        a.name, isQuant, t.indicator || '', '', 'FALSE', '', '',
+                        t.name, idx + 1, 'false', '', 'false', '',
+                        t.threshold || '', '', '', '', '', '', 'TRUE', '', '', 0, ''
+                    ]);
+                });
+            });
+            addSheet('Mix and Targets',
+                ['MIX', 'QUANTITATIVE', 'DYE', 'USE PASSIVE DYE', 'DISABLED', 'MAX CT FOR CLS DISCREPANCY', 'MAX CT FOR CT DISCREPANCY', 'TARGET', 'TARGET ORDER', 'PASSIVE', 'CALIBRATION FILE PATH', 'IC', 'CHECK CLS DISCREPANCY', 'EXPECTED THRESHOLD', 'EXPORT NAME', 'PREFERRED RESULT PROVIDER', 'CT DISCREPANCY DELTA', 'CT INHIBITION DELTA', 'EXTRACTION INSTRUMENT', 'ENABLED', 'MINIMUM FLUORESCENCE', 'MAXIMUM FLUORESCENCE', 'PREPEND CYCLES', 'MINIMUM FLUORESCENCE TO BE POSITIVE'],
+                mixTargetRows
+            );
+
+            // 16. QIR - Quantification settings (one row per target for quant assays)
+            const qirRows = [];
+            allAssays.filter(a => a.general.assayMode === 'quant').forEach(a => {
+                Object.values(a.targets || {}).forEach(t => {
+                    qirRows.push([
+                        t.name,
+                        a.general.slope !== undefined ? a.general.slope : '',
+                        a.general.intercept !== undefined ? a.general.intercept : '',
+                        '', '', '', '',
+                        a.general.r2 !== undefined ? a.general.r2 : '',
+                        ''
+                    ]);
+                });
+            });
+            addSheet('QIR -  Quantification settings',
+                ['TARGET', 'SLOPE', 'INTERCEPT', 'MIN SLOPE', 'MAX SLOPE', 'MIN EFFICIENCY', 'MAX EFFICIENCY', 'MIN R2', 'MIN CONTROLS'],
+                qirRows
+            );
+
+            // 17. Qualitative Reportings
+            const qualRows = [];
+            allAssays.forEach(a => {
+                const st = Array.isArray(a.general.sampleType) ? a.general.sampleType[0] || '' : (a.general.sampleType || '');
+                Object.values(a.targets || {}).forEach(t => {
+                    qualRows.push([a.name, t.name, st, 'Ct', 1, 'LoD', t.threshold || '']);
+                });
+            });
+            addSheet('Qualitative Reportings',
+                ['MIX', 'TARGET', 'SPECIMEN TYPE', 'QUANT OR CT', 'GROUP', 'GROUP DESCRIPTION', 'UPPER BOUNDARY'],
+                qualRows
+            );
+
+            // 18. Rules Mapping
+            headerOnly('Rules Mapping', ['RUN ORDER', 'RULE', 'TYPE', 'RULE DESCRIPTION', 'RULE ID', 'SPECIMEN NAME', 'ROLE', 'MIX', 'TARGET', 'DYE']);
+
+            // 19. Tags
+            headerOnly('Tags', ['NAME', 'ARCHIVE']);
+
+            // 20. Test Codes
+            const testCodeRows = [];
+            allAssays.forEach(a => {
+                if (!a.general.testCode) return;
+                const sampleTypes = Array.isArray(a.general.sampleType) && a.general.sampleType.length > 0 ? a.general.sampleType : [''];
+                sampleTypes.forEach(st => testCodeRows.push([a.general.testCode, a.name, st]));
+            });
+            addSheet('Test Codes', ['TEST CODE', 'MIX', 'SPECIMEN TYPE'], testCodeRows);
+
+            // 21. Thermocyclers
+            addSheet('Thermocyclers', ['Thermocycler Model', 'Thermocycler Instrument', 'Thermocycler Plate Size'], [[1, 'default_instrument', 96]]);
+
+            // 22. Westgard Limits
+            const wgRows = [];
+            allAssays.forEach(a => {
+                Object.values(a.controls || {}).forEach(c => {
+                    wgRows.push([
+                        '', a.name, '', c.name,
+                        c.lot || '', c.effectiveDate || '',
+                        'default_model', 'default_instrument',
+                        c.mean || '', c.sd || '', 'Ct'
+                    ]);
+                });
+            });
+            addSheet('Westgard Limits',
+                ['TARGET', 'MIX', 'DYE', 'ROLE', 'RANGE', 'RANGE START DATE', 'EXTRACTION MODEL', 'EXTRACTION INSTRUMENT', 'MEAN', 'SD', 'QUANT OR CT'],
+                wgRows
+            );
+
+            // 23. Dyes
+            headerOnly('Dyes', ['DYE NAME', 'QUENCHER', 'COLOUR']);
+
+            // 24. Roles
+            const roleTypeMap = { PC: 'PC', NC: 'NC', IC: 'IC', Crossover: 'Sample', Ignore: 'Ignore' };
+            const roleSet = new Set();
+            allAssays.forEach(a => Object.values(a.controls || {}).forEach(c => roleSet.add(c.type)));
+            addSheet('Roles',
+                ['ROLE NAME', 'ROLE TYPE', 'HAS EXTRACTION', 'EXCLUDE FROM IC DELTA CHECK'],
+                [...roleSet].map(r => [r, roleTypeMap[r] || r, true, 'No'])
+            );
+
+            // 25. Rules
+            headerOnly('Rules', ['TITLE', 'PROGRAMMATIC RULE NAME', 'TYPE', 'RULE DESCRIPTION', 'PRECEDENCE', 'IS ALLOW ERROR WELLS']);
+
+            // 26. Westgard Events
+            headerOnly('Westgard Events', ['TARGET', 'MIX', 'DYE', 'ROLE', 'RANGE', 'DATE', 'EXTRACTION MODEL', 'EXTRACTION INSTRUMENT', 'VALUE', 'QUANT OR CT', 'RULE', 'LEVEL']);
+
+            // 27. Specimens
+            headerOnly('Specimens', ['SPECIMEN TYPE', 'SPECIMEN NAME', 'ACCESSION FORMAT']);
+
+            const clientName = (activeClient && activeClient.name) ? activeClient.name.replace(/[^a-zA-Z0-9_\- ]/g, '').trim() : 'Export';
+            XLSX.writeFile(wb, `${clientName} - Config Rules.xlsx`);
         }
 
         function triggerImport() {
@@ -1306,180 +2338,274 @@
             reader.onload = (e) => {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                
-                const importedAssays = {};
 
-                // Helper to get sheet data
+                // Robust sheet lookup: exact match first, then case+whitespace-insensitive
                 const getSheetData = (name) => {
-                    const sheet = workbook.Sheets[name];
-                    return sheet ? XLSX.utils.sheet_to_json(sheet) : null;
+                    let sheet = workbook.Sheets[name];
+                    if (!sheet) {
+                        const norm = name.trim().toLowerCase();
+                        const actual = workbook.SheetNames.find(n => n.trim().toLowerCase() === norm);
+                        sheet = actual ? workbook.Sheets[actual] : null;
+                    }
+                    return sheet ? XLSX.utils.sheet_to_json(sheet, { defval: '' }) : null;
                 };
 
-                // Check for structured export format first
-                const assaysData = getSheetData("Assays");
-                const targetsData = getSheetData("Targets");
-                const controlsData = getSheetData("Controls");
-                const rulesData = getSheetData("Rules");
+                const mixAndTargetsData = getSheetData('Mix and Targets');
+                const isConfigFormat = Array.isArray(mixAndTargetsData) && mixAndTargetsData.some(r => r['MIX']);
 
-                if (assaysData) {
-                    // Structured Format
-                    assaysData.forEach(row => {
-                        const id = row["Assay ID"] || ('A-' + Math.random().toString(36).substr(2, 4).toUpperCase());
-                        importedAssays[id] = {
-                            id: id,
-                            name: row["Assay"] || "Imported Assay",
-                            general: {
-                                assayMode: 'qual',
-                                sampleType: row["Sample Type"] ? (typeof row["Sample Type"] === 'string' ? row["Sample Type"].split(',').map(s => s.trim()) : [row["Sample Type"]]) : [],
-                                testCode: row["Test Code"] || '',
-                                evalThreshold: 0.2,
-                                maxCycles: 45,
-                                inhibition: true,
-                                quantMode: 'stored',
-                                units: 'copies/mL',
-                                rounding: row["Rounding"] || 'none',
-                                slope: -3.3,
-                                intercept: 40,
-                                r2: 0.99
-                            },
-                            targets: {},
-                            controls: {},
-                            rules: [],
-                            westgard: {
-                                '1-2s': { enabled: true, level: 'warning', multiRun: false },
-                                '1-3s': { enabled: true, level: 'error', multiRun: false },
-                                '2-2s': { enabled: true, level: 'error', multiRun: false },
-                                'R-4s': { enabled: false, level: 'error', multiRun: false },
-                                '4-1s': { enabled: false, level: 'warning', multiRun: true },
-                                '10-x': { enabled: false, level: 'warning', multiRun: true }
-                            }
-                        };
+                if (isConfigFormat) {
+                    // ── "Config rules import.xlsx" format ──────────────────────────
+
+                    // Determine target client
+                    let targetClient = state.clients[state.activeClientId];
+                    if (!targetClient) {
+                        const clientName = prompt('No client is currently selected. Enter a name for the new client to import into:');
+                        if (!clientName) { event.target.value = ''; return; }
+                        const newId = 'CL-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                        state.clients[newId] = createEmptyClient(newId, clientName.trim());
+                        state.activeClientId = newId;
+                        attachStateAliases(state);
+                        targetClient = state.clients[newId];
+                    }
+
+                    const assayByMix = {};    // mixName -> assay object
+                    const targetByCode = {};  // targetCode -> assay object
+
+                    // Pass 1: Mix and Targets → assays + targets
+                    const mixGroups = {};
+                    mixAndTargetsData.forEach(row => {
+                        const mix = String(row['MIX'] || '').trim();
+                        if (!mix) return;
+                        if (!mixGroups[mix]) mixGroups[mix] = [];
+                        mixGroups[mix].push(row);
                     });
 
-                    if (targetsData) {
-                        targetsData.forEach(row => {
-                            const aid = row["Assay ID"];
-                            if (importedAssays[aid]) {
-                                const tid = 'T' + Math.random().toString(36).substr(2, 9);
-                                importedAssays[aid].targets[tid] = {
-                                    name: row["Target Name"] || "Unknown Target",
-                                    type: row["Target Type"] || "Target",
-                                    indicator: row["Indicator"] || "",
-                                    threshold: row["Threshold"] || 38
-                                };
+                    Object.entries(mixGroups).forEach(([mix, rows]) => {
+                        let assay = Object.values(targetClient.assays).find(a => a.name === mix);
+                        if (!assay) {
+                            const aid = 'A-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+                            assay = createEmptyAssay(aid, mix);
+                            targetClient.assays[aid] = assay;
+                        }
+
+                        assay.general.assayMode = rows.some(r => String(r['QUANTITATIVE'] || '').toUpperCase() === 'TRUE') ? 'quant' : 'qual';
+                        if (rows.some(r => String(r['IC'] || '').toLowerCase() === 'true')) assay.general.inhibition = true;
+
+                        rows.forEach((row, idx) => {
+                            const targetName = String(row['TARGET'] || '').trim();
+                            if (!targetName || targetName === 'REFERENCE') return;
+
+                            let tid = Object.keys(assay.targets).find(k => assay.targets[k].name === targetName);
+                            if (!tid) {
+                                tid = 'T' + Date.now() + '_' + idx;
+                                assay.targets[tid] = { name: targetName, type: 'Target', indicator: '', threshold: 38 };
                             }
+                            const t = assay.targets[tid];
+                            if (row['DYE']) t.indicator = String(row['DYE']);
+                            const thresh = parseFloat(row['EXPECTED THRESHOLD']);
+                            if (!isNaN(thresh)) t.threshold = thresh;
+
+                            targetByCode[targetName] = assay;
+                        });
+
+                        assayByMix[mix] = assay;
+                    });
+
+                    // Pass 2: QIR – apply slope/intercept/r2 to assay level
+                    const qirData = getSheetData('QIR -  Quantification settings');
+                    if (qirData) {
+                        const appliedAssays = new Set();
+                        qirData.forEach(row => {
+                            const targetCode = String(row['TARGET'] || '').trim();
+                            const assay = targetByCode[targetCode];
+                            if (!assay || appliedAssays.has(assay.id)) return;
+                            appliedAssays.add(assay.id);
+                            const slope = parseFloat(row['SLOPE']);
+                            const intercept = parseFloat(row['INTERCEPT']);
+                            const r2 = parseFloat(row['MIN R2']);
+                            if (!isNaN(slope)) assay.general.slope = slope;
+                            if (!isNaN(intercept)) assay.general.intercept = intercept;
+                            if (!isNaN(r2)) assay.general.r2 = r2;
                         });
                     }
 
-                    if (controlsData) {
-                        controlsData.forEach(row => {
-                            const aid = row["Assay ID"];
-                            if (importedAssays[aid]) {
-                                const cid = 'C' + Math.random().toString(36).substr(2, 9);
-                                importedAssays[aid].controls[cid] = {
-                                    name: row["Control Name"] || "Control",
-                                    runfileLabel: row["Run Label"] || "",
-                                    lot: "",
-                                    mean: 25,
-                                    sd: 1,
-                                    type: row["Type"] || "PC"
-                                };
-                            }
-                        });
-                    }
-
-                    if (rulesData) {
-                        rulesData.forEach(row => {
-                            const aid = row["Assay ID"];
-                            if (importedAssays[aid]) {
-                                const exprStr = row["Trigger"] || row["Full Trigger"] || "";
-                                const outcome = row["Outcome"] || "UNKNOWN";
-                                const conditions = [];
-                                if (exprStr) {
-                                    const parts = exprStr.split('&').map(p => p.trim());
-                                    parts.forEach(p => {
-                                        const match = p.match(/(.+?)\s*(==|!=)\s*(.+)/);
-                                        if (match) {
-                                            conditions.push({ target: match[1].trim(), op: match[2].trim(), val: match[3].trim() });
-                                        }
-                                    });
+                    // Pass 3: Control Labels → create controls per assay
+                    const ctrlLabelsData = getSheetData('Control Labels');
+                    if (ctrlLabelsData) {
+                        ctrlLabelsData.forEach(row => {
+                            const role = String(row['ROLE'] || '').trim();
+                            const roleType = String(row['ROLE TYPE'] || '').trim();
+                            const runfileLabel = String(row['LABELS IN IMPORTED RUNFILE'] || '').trim();
+                            const mixList = String(row['MIX'] || '').split('|').map(m => m.trim()).filter(Boolean);
+                            mixList.forEach(mixName => {
+                                const assay = assayByMix[mixName];
+                                if (!assay) return;
+                                let cid = Object.keys(assay.controls).find(k => assay.controls[k].name === role);
+                                if (!cid) {
+                                    cid = 'C' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                                    assay.controls[cid] = { name: role, runfileLabel: '', lot: '', mean: 25, sd: 1, type: 'PC', entryDate: '', effectiveDate: '', expirationDate: '' };
                                 }
-                                importedAssays[aid].rules.push({ outcome, conditions, expressionStr: exprStr });
+                                if (roleType) assay.controls[cid].type = roleType;
+                                if (runfileLabel) assay.controls[cid].runfileLabel = runfileLabel;
+                            });
+                        });
+                    }
+
+                    // Pass 4: Westgard Limits → augment controls (use last row per MIX+ROLE = most recent lot)
+                    const wgData = getSheetData('Westgard Limits');
+                    if (wgData) {
+                        const wgMap = {};
+                        wgData.forEach(row => {
+                            const mix = String(row['MIX'] || '').trim();
+                            const role = String(row['ROLE'] || '').trim();
+                            if (mix && role) wgMap[mix + '|' + role] = row;
+                        });
+                        Object.values(wgMap).forEach(row => {
+                            const mix = String(row['MIX'] || '').trim();
+                            const role = String(row['ROLE'] || '').trim();
+                            const assay = assayByMix[mix];
+                            if (!assay) return;
+                            let cid = Object.keys(assay.controls).find(k => assay.controls[k].name === role);
+                            if (!cid) {
+                                cid = 'C' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+                                assay.controls[cid] = { name: role, runfileLabel: '', lot: '', mean: 25, sd: 1, type: 'PC', entryDate: '', effectiveDate: '', expirationDate: '' };
+                            }
+                            const c = assay.controls[cid];
+                            const lotRaw = row['RANGE'];
+                            if (lotRaw !== '' && lotRaw !== undefined) c.lot = String(lotRaw);
+                            const startDate = row['RANGE START DATE'];
+                            if (startDate) c.effectiveDate = String(startDate).split(' ')[0];
+                            const mean = parseFloat(row['MEAN']);
+                            if (!isNaN(mean)) c.mean = mean;
+                            const sd = parseFloat(row['SD']);
+                            if (!isNaN(sd)) c.sd = sd;
+                        });
+                    }
+
+                    // Pass 5: Qualitative Reportings → update target thresholds
+                    const qualData = getSheetData('Qualitative Reportings');
+                    if (qualData) {
+                        qualData.forEach(row => {
+                            const mix = String(row['MIX'] || '').trim();
+                            const targetCode = String(row['TARGET'] || '').trim();
+                            const assay = assayByMix[mix];
+                            if (!assay) return;
+                            const tid = Object.keys(assay.targets).find(k => assay.targets[k].name === targetCode);
+                            if (!tid) return;
+                            const bound = parseFloat(row['UPPER BOUNDARY']);
+                            if (!isNaN(bound)) assay.targets[tid].threshold = bound;
+                        });
+                    }
+
+                    // Pass 6: Test Codes → testCode + sampleType
+                    const testCodeData = getSheetData('Test Codes');
+                    if (testCodeData) {
+                        testCodeData.forEach(row => {
+                            const mix = String(row['MIX'] || '').trim();
+                            const code = String(row['TEST CODE'] || '').trim();
+                            const specimenType = String(row['SPECIMEN TYPE'] || '').trim();
+                            const assay = assayByMix[mix];
+                            if (!assay || !code) return;
+                            assay.general.testCode = code;
+                            if (specimenType) {
+                                if (!Array.isArray(assay.general.sampleType)) assay.general.sampleType = [];
+                                if (!assay.general.sampleType.includes(specimenType)) assay.general.sampleType.push(specimenType);
                             }
                         });
                     }
+
+                    attachStateAliases(state);
+                    saveState();
+                    renderSidebar();
+
+                    const assayCount = Object.keys(assayByMix).length;
+                    alert(`Import complete! Loaded ${assayCount} assay(s) into "${targetClient.name}".`);
+
+                    if (!activeAssayId || !state.assays[activeAssayId]) {
+                        const firstAssay = Object.values(assayByMix)[0];
+                        if (firstAssay) selectAssay(firstAssay.id, targetClient.id);
+                    }
+
                 } else {
-                    // Flat Format Fallback (Single Sheet)
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const flatData = XLSX.utils.sheet_to_json(firstSheet);
-                    
-                    flatData.forEach(row => {
-                        const assayName = row["Assay"] || row["Assay Name"] || "Default Assay";
-                        const id = row["Assay ID"] || (Object.values(importedAssays).find(a => a.name === assayName)?.id) || ('A-' + Math.random().toString(36).substr(2, 4).toUpperCase());
-                        
-                        if (!importedAssays[id]) {
-                            importedAssays[id] = {
-                                id: id,
-                                name: assayName,
-                                general: {
-                                    assayMode: 'qual',
-                                    sampleType: row["Sample Type"] ? [row["Sample Type"]] : [],
-                                    testCode: row["Test Code"] || '',
-                                    evalThreshold: 0.2,
-                                    maxCycles: 45,
-                                    inhibition: true,
-                                    quantMode: 'stored',
-                                    units: 'copies/mL',
-                                    rounding: 'none',
-                                    slope: -3.3,
-                                    intercept: 40,
-                                    r2: 0.99
-                                },
-                                targets: {},
-                                controls: {},
-                                rules: [],
-                                westgard: {
-                                    '1-2s': { enabled: true, level: 'warning', multiRun: false },
-                                    '1-3s': { enabled: true, level: 'error', multiRun: false },
-                                    '2-2s': { enabled: true, level: 'error', multiRun: false },
-                                    'R-4s': { enabled: false, level: 'error', multiRun: false },
-                                    '4-1s': { enabled: false, level: 'warning', multiRun: true },
-                                    '10-x': { enabled: false, level: 'warning', multiRun: true }
-                                }
-                            };
-                        }
+                    // ── Legacy structured format fallback ──────────────────────────
+                    const importedClients = {};
 
-                        // Add Target if present
-                        if (row["Target Name"]) {
-                            const tid = 'T' + Math.random().toString(36).substr(2, 9);
-                            importedAssays[id].targets[tid] = {
-                                name: row["Target Name"],
-                                type: row["Target Type"] || "Target",
-                                indicator: row["Indicator"] || "",
-                                threshold: row["Threshold"] || 38
-                            };
+                    const ensureImportedClient = (clientId, clientName) => {
+                        const resolvedId = clientId || ('CL-' + Math.random().toString(36).substr(2, 4).toUpperCase());
+                        if (!importedClients[resolvedId]) {
+                            importedClients[resolvedId] = createEmptyClient(resolvedId, clientName || 'Imported Client');
                         }
+                        return importedClients[resolvedId];
+                    };
 
-                        // Add Control if present
-                        if (row["Control Name"]) {
-                            const cid = 'C' + Math.random().toString(36).substr(2, 9);
-                            importedAssays[id].controls[cid] = {
-                                name: row["Control Name"],
-                                runfileLabel: row["Run Label"] || "",
-                                lot: "",
-                                mean: 25,
-                                sd: 1,
-                                type: row["Type"] || "PC"
-                            };
+                    const findImportedAssay = (assayId, clientId) => {
+                        if (clientId && importedClients[clientId]?.assays?.[assayId]) return importedClients[clientId].assays[assayId];
+                        return Object.values(importedClients).find(c => c.assays?.[assayId])?.assays?.[assayId] || null;
+                    };
+
+                    const getLegacySheet = (name) => {
+                        let sheet = workbook.Sheets[name];
+                        if (!sheet) {
+                            const norm = name.trim().toLowerCase();
+                            const actual = workbook.SheetNames.find(n => n.trim().toLowerCase() === norm);
+                            sheet = actual ? workbook.Sheets[actual] : null;
                         }
+                        return sheet ? XLSX.utils.sheet_to_json(sheet) : null;
+                    };
+
+                    const clientsData = getLegacySheet('Clients');
+                    const assaysData = getLegacySheet('Assays');
+                    const targetsData = getLegacySheet('Targets');
+                    const controlsData = getLegacySheet('Controls');
+                    const rulesData = getLegacySheet('Rules');
+
+                    if (clientsData) clientsData.forEach(row => ensureImportedClient(row['Client ID'], row['Client Name'] || 'Imported Client'));
+
+                    if (assaysData) {
+                        assaysData.forEach(row => {
+                            const id = row['Assay ID'] || ('A-' + Math.random().toString(36).substr(2, 4).toUpperCase());
+                            const client = ensureImportedClient(row['Client ID'], row['Client Name'] || 'Imported Client');
+                            client.assays[id] = createEmptyAssay(id, row['Assay'] || 'Imported Assay');
+                            client.assays[id].general.sampleType = row['Sample Type'] ? (typeof row['Sample Type'] === 'string' ? row['Sample Type'].split(',').map(s => s.trim()) : [row['Sample Type']]) : [];
+                            client.assays[id].general.testCode = row['Test Code'] || '';
+                            client.assays[id].general.rounding = row['Rounding'] || 'none';
+                        });
+                        if (targetsData) targetsData.forEach(row => {
+                            const assay = findImportedAssay(row['Assay ID'], row['Client ID']);
+                            if (assay) { const tid = 'T' + Math.random().toString(36).substr(2, 9); assay.targets[tid] = { name: row['Target Name'] || 'Unknown Target', type: row['Target Type'] || 'Target', indicator: row['Indicator'] || '', threshold: row['Threshold'] || 38 }; }
+                        });
+                        if (controlsData) controlsData.forEach(row => {
+                            const assay = findImportedAssay(row['Assay ID'], row['Client ID']);
+                            if (assay) { const cid = 'C' + Math.random().toString(36).substr(2, 9); assay.controls[cid] = { name: row['Control Name'] || 'Control', runfileLabel: row['Run Label'] || '', lot: '', mean: 25, sd: 1, type: row['Type'] || 'PC', entryDate: '', effectiveDate: '', expirationDate: '' }; }
+                        });
+                        if (rulesData) rulesData.forEach(row => {
+                            const assay = findImportedAssay(row['Assay ID'], row['Client ID']);
+                            if (assay) { const exprStr = row['Trigger'] || row['Full Trigger'] || ''; const conditions = []; exprStr.split('&').map(p => p.trim()).forEach(p => { const m = p.match(/(.+?)\s*(==|!=)\s*(.+)/); if (m) conditions.push({ target: m[1].trim(), op: m[2].trim(), val: m[3].trim() }); }); assay.rules.push({ outcome: row['Outcome'] || 'UNKNOWN', conditions, expressionStr: exprStr }); }
+                        });
+                    } else {
+                        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                        XLSX.utils.sheet_to_json(firstSheet).forEach(row => {
+                            const client = ensureImportedClient(row['Client ID'] || row['Client'] || null, row['Client Name'] || row['Client'] || 'Imported Client');
+                            const assayName = row['Assay'] || row['Assay Name'] || 'Default Assay';
+                            const id = row['Assay ID'] || Object.values(client.assays).find(a => a.name === assayName)?.id || ('A-' + Math.random().toString(36).substr(2, 4).toUpperCase());
+                            if (!client.assays[id]) { client.assays[id] = createEmptyAssay(id, assayName); client.assays[id].general.sampleType = row['Sample Type'] ? [row['Sample Type']] : []; client.assays[id].general.testCode = row['Test Code'] || ''; }
+                            if (row['Target Name']) { const tid = 'T' + Math.random().toString(36).substr(2, 9); client.assays[id].targets[tid] = { name: row['Target Name'], type: row['Target Type'] || 'Target', indicator: row['Indicator'] || '', threshold: row['Threshold'] || 38 }; }
+                            if (row['Control Name']) { const cid = 'C' + Math.random().toString(36).substr(2, 9); client.assays[id].controls[cid] = { name: row['Control Name'], runfileLabel: row['Run Label'] || '', lot: '', mean: 25, sd: 1, type: row['Type'] || 'PC', entryDate: '', effectiveDate: '', expirationDate: '' }; }
+                        });
+                    }
+
+                    Object.values(importedClients).forEach(client => {
+                        if (!state.clients[client.id]) state.clients[client.id] = createEmptyClient(client.id, client.name);
+                        state.clients[client.id].name = client.name;
+                        Object.assign(state.clients[client.id].assays, client.assays);
                     });
+                    attachStateAliases(state);
+                    saveState();
+                    renderSidebar();
+                    const importedAssayCount = Object.values(importedClients).reduce((count, client) => count + Object.keys(client.assays || {}).length, 0);
+                    alert(`Import complete! Processed ${Object.keys(importedClients).length} client(s) and ${importedAssayCount} test menu(s).`);
                 }
 
-                // Final Merge
-                Object.assign(state.assays, importedAssays);
-                saveState();
-                renderSidebar();
-                alert(`Import complete! Processed ${Object.keys(importedAssays).length} assays.`);
                 event.target.value = '';
             };
             reader.readAsArrayBuffer(file);
@@ -1626,24 +2752,32 @@
 
         function clearAllData() {
             if (confirm("Clear all locally saved assays? This cannot be undone.")) {
-                state = { assays: {} };
+                state = normalizeState(null);
                 saveState();
                 location.reload();
             }
         }
 
-        function deleteAssay(id, event) {
+        function deleteAssay(id, event, clientId = state.activeClientId) {
             if (event) event.stopPropagation();
+            const client = state.clients[clientId];
+            if (!client || !client.assays[id]) return;
+
             if (confirm("Delete this assay entire definition?")) {
-                delete state.assays[id];
+                delete client.assays[id];
+
+                if (state.activeClientId === clientId) {
+                    attachStateAliases(state);
+                }
+
                 saveState();
 
-                if (activeAssayId === id) {
-                    activeAssayId = Object.keys(state.assays)[0] || null;
+                if (activeAssayId === id && state.activeClientId === clientId) {
+                    activeAssayId = Object.keys(client.assays)[0] || null;
                     if (activeAssayId) {
-                        selectAssay(activeAssayId);
+                        selectAssay(activeAssayId, clientId);
                     } else {
-                        location.reload();
+                        showEmptyWorkspace('Select a test menu for this client or create a new one to begin configuration.');
                     }
                 }
                 renderSidebar();
@@ -1652,6 +2786,50 @@
 
         function deleteCurrentAssay() {
             deleteAssay(activeAssayId);
+        }
+
+        function duplicateAssay() {
+            if (!activeAssayId) return;
+            const src = state.assays[activeAssayId];
+            if (!src) return;
+            const newId = 'A-' + Math.random().toString(36).substr(2, 4).toUpperCase();
+            const copy = JSON.parse(JSON.stringify(src));
+            copy.id = newId;
+            copy.name = src.name + ' (Copy)';
+            state.assays[newId] = copy;
+            saveState();
+            selectAssay(newId, state.activeClientId);
+        }
+
+        function renameClient(clientId, event) {
+            if (event) event.stopPropagation();
+            const client = state.clients[clientId];
+            if (!client) return;
+            const newName = prompt('Rename client:', client.name);
+            if (!newName || !newName.trim()) return;
+            client.name = newName.trim();
+            saveState();
+            if (activeAssayId) document.getElementById('active-client-name').innerText = client.name;
+            renderSidebar();
+        }
+
+        function moveAssayToClient() {
+            if (!activeAssayId) return;
+            const otherClients = Object.values(state.clients).filter(c => c.id !== state.activeClientId);
+            if (otherClients.length === 0) { alert('No other clients to move to. Create another client first.'); return; }
+            const options = otherClients.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+            const raw = prompt(`Move "${state.assays[activeAssayId].name}" to which client?\n\n${options}\n\nEnter the number:`);
+            if (!raw) return;
+            const idx = parseInt(raw.trim(), 10) - 1;
+            if (isNaN(idx) || idx < 0 || idx >= otherClients.length) { alert('Invalid selection.'); return; }
+            const target = otherClients[idx];
+            const assayCopy = JSON.parse(JSON.stringify(state.assays[activeAssayId]));
+            target.assays[assayCopy.id] = assayCopy;
+            delete state.clients[state.activeClientId].assays[activeAssayId];
+            attachStateAliases(state);
+            activeAssayId = null;
+            saveState();
+            selectAssay(assayCopy.id, target.id);
         }
 
         // --- Simulator ---
@@ -1912,7 +3090,7 @@
             wellEl.innerHTML = currentWellBrush === 'sample' ? 'S' : currentWellBrush.substring(0,2).toUpperCase();
             
             // Fast persistence
-            localStorage.setItem('pcr_console_v2', JSON.stringify(state));
+            persistState();
         }
 
         function cycleWell(key) {
@@ -1934,10 +3112,25 @@
         }
 
         // Boot
-        window.onload = () => {
+        window.onload = async () => {
             renderSidebar();
+            updateFirebaseStatus();
             const firstId = Object.keys(state.assays)[0];
-            if (firstId) selectAssay(firstId);
+            if (firstId) {
+                selectAssay(firstId, state.activeClientId);
+            } else {
+                showEmptyWorkspace('Select a client and create a test menu to begin configuration.');
+            }
+
+            if (state.firebase.enabled && hasCompleteFirebaseConfig()) {
+                // ensureFirebaseReady initializes Firebase + calls initAuth().
+                // The onAuthStateChanged listener handles hiding the login screen
+                // and loading cloud data once the user is authenticated.
+                await ensureFirebaseReady();
+            } else {
+                // No Firebase config — run local-only, skip login.
+                hideLoginScreen();
+            }
         };
     </script>
 </body>
