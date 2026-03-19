@@ -107,7 +107,7 @@
         <div class="text-center max-w-sm px-6">
             <img src="diagnosticsailogo.png" alt="Diagnostics AI Logo" class="h-14 w-auto mx-auto mb-6">
             <h2 class="text-2xl font-bold text-white mb-2">pcr.ai Assay Console</h2>
-            <p class="text-slate-400 text-sm mb-8">Sign in to access your assay configurations.</p>
+            <p class="text-slate-500 text-sm mb-8">Sign in to access your assay configurations.</p>
             <button id="google-signin-btn" onclick="signInWithGoogle()"
                 class="flex items-center gap-3 bg-white text-slate-700 font-semibold px-6 py-3 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all mx-auto">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -169,7 +169,7 @@
         <aside class="w-80 bg-white border-r border-slate-200 flex flex-col shrink-0">
             <div class="p-4 border-b border-slate-100 bg-slate-50/50 space-y-3">
                 <div class="flex justify-between items-center">
-                    <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Clients & Test Menus</span>
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-widest">Clients & Test Menus</span>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <button onclick="createNewClient()"
@@ -178,6 +178,15 @@
                     <button onclick="createNewAssay()"
                         class="p-2 text-xs font-bold bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white rounded transition-all">+
                         Test</button>
+                </div>
+                <div class="relative">
+                    <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"></path></svg>
+                    <input type="text" id="sidebar-search" placeholder="Search all tests…"
+                        class="w-full pl-8 pr-8 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-blue/20 focus:border-brand-blue transition-all"
+                        oninput="sidebarSearch = this.value.trim().toLowerCase(); renderSidebar()">
+                    <button id="sidebar-search-clear" onclick="document.getElementById('sidebar-search').value=''; sidebarSearch=''; renderSidebar()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 hidden">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
                 </div>
             </div>
             <div id="assay-list" class="flex-1 overflow-y-auto py-2">
@@ -196,14 +205,14 @@
             <div id="empty-state" class="absolute inset-0 flex items-center justify-center bg-brand-bg z-10">
                 <div class="text-center">
                     <div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-10 h-10 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
                             </path>
                         </svg>
                     </div>
                     <h3 class="text-slate-600 font-semibold text-lg">No Assay Selected</h3>
-                    <p class="text-slate-400 text-sm max-w-xs mt-2">Select an assay from the sidebar or create a new one
+                    <p class="text-slate-500 text-sm max-w-xs mt-2">Select an assay from the sidebar or create a new one
                         to begin configuration.</p>
                 </div>
             </div>
@@ -217,25 +226,25 @@
                             <span id="active-client-name"
                                 class="px-2 py-0.5 bg-brand-blue/10 text-brand-blue text-[10px] font-bold rounded uppercase">Default Client</span>
                         </div>
-                        <p class="text-sm text-slate-400 mt-1">Configure parameters, targets, and validity rules.</p>
+                        <p class="text-sm text-slate-500 mt-1">Configure parameters, targets, and validity rules.</p>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="duplicateAssay()"
-                            class="p-2 text-slate-400 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg transition-all"
+                            class="p-2 text-slate-500 hover:text-brand-blue hover:bg-brand-blue/10 rounded-lg transition-all"
                             title="Duplicate Assay">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                             </svg>
                         </button>
                         <button onclick="moveAssayToClient()"
-                            class="p-2 text-slate-400 hover:text-brand-teal hover:bg-teal-50 rounded-lg transition-all"
+                            class="p-2 text-slate-500 hover:text-brand-teal hover:bg-teal-50 rounded-lg transition-all"
                             title="Move to Another Client">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                             </svg>
                         </button>
                         <button onclick="deleteCurrentAssay()"
-                            class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            class="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                             title="Delete Assay">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -249,22 +258,22 @@
                 <!-- Tabs -->
                 <div class="flex gap-8">
                     <button id="tab-general" onclick="switchTab('general')"
-                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">General
+                        class="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all border-b-2 border-transparent">General
                         Specs</button>
                     <button id="tab-targets" onclick="switchTab('targets')"
-                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Targets</button>
+                        class="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all border-b-2 border-transparent">Targets</button>
                     <button id="tab-controls" onclick="switchTab('controls')"
-                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">QC
+                        class="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all border-b-2 border-transparent">QC
                         & Controls</button>
                     <button id="tab-plate" onclick="switchTab('plate')"
-                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Plate Layout</button>
+                        class="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all border-b-2 border-transparent">Plate Layout</button>
                     <button id="tab-rules" onclick="switchTab('rules')"
-                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Outcome
+                        class="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all border-b-2 border-transparent">Outcome
                         Rules</button>
                     <button id="tab-test" onclick="switchTab('test')"
-                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Test Logic</button>
+                        class="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all border-b-2 border-transparent">Test Logic</button>
                     <button id="tab-summary" onclick="switchTab('summary')"
-                        class="pb-3 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-all border-b-2 border-transparent">Summary</button>
+                        class="pb-3 text-sm font-semibold text-slate-500 hover:text-slate-700 transition-all border-b-2 border-transparent">Summary</button>
                 </div>
             </div>
 
@@ -278,13 +287,13 @@
                             <div class="glass-panel p-6 rounded-xl">
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Assay Name</label>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Assay Name</label>
                                         <input type="text" id="inp-assay-name"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                                             placeholder="Assay name" oninput="captureAssayName()">
                                     </div>
                                     <div>
-                                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Assay Group <span class="text-slate-300 normal-case font-normal">(optional)</span></label>
+                                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Assay Group <span class="text-slate-400 normal-case font-normal">(optional)</span></label>
                                         <div id="group-combobox" class="relative">
                                             <div class="flex">
                                                 <input type="text" id="inp-group"
@@ -292,7 +301,7 @@
                                                     placeholder="Type or select a group…" oninput="captureGeneral(); filterGroupDropdown()" onfocus="openGroupDropdown()" autocomplete="off">
                                                 <button type="button" onclick="toggleGroupDropdown()"
                                                     class="px-2 bg-slate-100 border border-l-0 border-slate-200 rounded-r-md hover:bg-slate-200 transition-all shadow-sm flex items-center">
-                                                    <svg id="group-chevron" class="w-3.5 h-3.5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                                    <svg id="group-chevron" class="w-3.5 h-3.5 text-slate-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                                 </button>
                                             </div>
                                             <div id="group-dropdown"
@@ -323,7 +332,7 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Sample
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Sample
                                             Type(s) (Optional)</label>
                                         <div class="flex gap-2">
                                             <select id="sel-sample-type"
@@ -351,7 +360,7 @@
                                     </div>
                                     <div>
                                         <label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Test
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Test
                                             Code</label>
                                         <input type="text" id="inp-test-code"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
@@ -359,7 +368,7 @@
                                     </div>
                                     <div>
                                         <label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Analysis
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Analysis
                                             Threshold</label>
                                         <input type="number" id="inp-eval-threshold"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
@@ -367,7 +376,7 @@
                                     </div>
                                     <div>
                                         <label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Max
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Max
                                             Instrument Cycles</label>
                                         <input type="number" id="inp-max-cycles"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
@@ -408,17 +417,17 @@
                                 </div>
                                 <div id="quant-stored-fields" class="grid grid-cols-3 gap-4">
                                     <div><label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Slope</label><input
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Slope</label><input
                                             type="number" id="inp-slope"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                                             oninput="captureGeneral()"></div>
                                     <div><label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Intercept</label><input
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Intercept</label><input
                                             type="number" id="inp-intercept"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                                             oninput="captureGeneral()"></div>
                                     <div><label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Min
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Min
                                             R²</label><input type="number" id="inp-r2"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                                             placeholder="0.99" oninput="captureGeneral()"></div>
@@ -426,7 +435,7 @@
                                 <div class="grid grid-cols-2 gap-4">
                                     <div>
                                         <label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Result
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Result
                                             Units</label>
                                         <select id="sel-units"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
@@ -439,7 +448,7 @@
                                     </div>
                                     <div>
                                         <label
-                                            class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Rounding</label>
+                                            class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Rounding</label>
                                         <select id="sel-rounding"
                                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                                             onchange="captureGeneral()">
@@ -456,11 +465,11 @@
 
                         <div class="space-y-6">
                             <div class="glass-panel p-6 rounded-xl space-y-4">
-                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest" title="Information about the physical plate layout and geometry.">Plate Metadata
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest" title="Information about the physical plate layout and geometry.">Plate Metadata
                                 </h4>
                                 <div>
                                     <label
-                                        class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Default
+                                        class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Default
                                         Plate Size</label>
                                     <select
                                         class="w-full bg-slate-100 border border-slate-200 rounded-md px-3 py-2 text-sm cursor-not-allowed"
@@ -508,12 +517,12 @@
                         </div>
                         <div class="space-y-4">
                             <div class="glass-panel p-6 rounded-xl space-y-4">
-                                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4" title="Statistical rules applied to control performance to detect shifts or trends in assay accuracy.">Westgard
+                                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4" title="Statistical rules applied to control performance to detect shifts or trends in assay accuracy.">Westgard
                                     Rule Configuration</h4>
                                 <div class="overflow-x-auto">
                                     <table class="w-full text-left text-xs">
                                         <thead>
-                                            <tr class="text-slate-400 border-b border-slate-100">
+                                            <tr class="text-slate-500 border-b border-slate-100">
                                                 <th class="pb-2 font-bold uppercase tracking-wider text-center">Enable</th>
                                                 <th class="pb-2 font-bold uppercase tracking-wider">Rule</th>
                                                 <th class="pb-2 font-bold uppercase tracking-wider text-center">Severity</th>
@@ -534,7 +543,7 @@
                     <div class="flex justify-between items-center">
                         <div>
                             <h4 class="text-lg font-bold text-slate-800" title="Logical statements that determine the final clinical interpretation for a sample based on target results.">Outcome Evaluation Rules</h4>
-                            <p class="text-xs text-slate-400 mt-1">Define how target flags combine into a final assay
+                            <p class="text-xs text-slate-500 mt-1">Define how target flags combine into a final assay
                                 outcome.</p>
                         </div>
                         <button onclick="addRule()"
@@ -553,20 +562,20 @@
                         </div>
                         <div>
                             <h4 class="text-lg font-bold text-slate-800">Logic Validation Playground</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Simulate target results to verify outcome determination logic.</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Simulate target results to verify outcome determination logic.</p>
                         </div>
                     </div>
                     
                     <div class="glass-panel p-8 rounded-3xl space-y-8">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-50 pb-2">Set Target Statuses</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6 border-b border-slate-50 pb-2">Set Target Statuses</label>
                             <div id="simulator-targets" class="flex flex-wrap gap-4">
                                 <!-- Target toggles -->
                             </div>
                         </div>
                         
                         <div class="pt-6 border-t border-slate-100">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Simulated Interpretation</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Simulated Interpretation</label>
                             <div id="simulator-result" class="p-6 bg-slate-900 rounded-2xl flex items-center justify-between shadow-xl shadow-slate-900/20">
                                 <div class="flex items-center gap-4">
                                     <div class="w-2 h-10 bg-brand-accent rounded-full"></div>
@@ -577,7 +586,7 @@
                                 </div>
                                 <div class="text-right">
                                     <span class="text-[10px] font-mono text-brand-accent/60 block mb-1 uppercase">Logic Trace</span>
-                                    <div id="simulator-triggered-rule" class="text-xs font-mono text-slate-400 italic">No matching rule</div>
+                                    <div id="simulator-triggered-rule" class="text-xs font-mono text-slate-500 italic">No matching rule</div>
                                 </div>
                         </div>
                     </div>
@@ -588,7 +597,7 @@
                             <!-- Scenario Sidebar -->
                             <div class="w-full lg:w-72 space-y-4 shrink-0">
                                 <div class="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                                    <h6 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Batch Scenarios</h6>
+                                    <h6 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-50 pb-2">Batch Scenarios</h6>
                                     
                                     <div class="space-y-4 pt-2">
                                         <div class="flex items-center justify-between">
@@ -617,24 +626,24 @@
                                                     <div class="w-7 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-500"></div>
                                                 </label>
                                             </div>
-                                            <p class="text-[9px] text-slate-400 italic">Forces high Ct / low Ct adjacent wells.</p>
+                                            <p class="text-[9px] text-slate-500 italic">Forces high Ct / low Ct adjacent wells.</p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div class="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                                    <h6 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Population Params</h6>
+                                    <h6 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-50 pb-2">Population Params</h6>
                                     <div class="space-y-4">
                                         <div>
                                             <div class="flex justify-between text-[10px] mb-1 font-bold">
-                                                <span class="text-slate-400 uppercase">Positivity Rate</span>
+                                                <span class="text-slate-500 uppercase">Positivity Rate</span>
                                                 <span id="sim-pos-value" class="text-brand-blue">15%</span>
                                             </div>
                                             <input type="range" id="sim-pos-rate" min="0" max="100" value="15" oninput="document.getElementById('sim-pos-value').innerText = this.value + '%'" class="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-blue">
                                         </div>
                                         <div>
                                             <div class="flex justify-between text-[10px] mb-1 font-bold">
-                                                <span class="text-slate-400 uppercase">Mean Ct (Positives)</span>
+                                                <span class="text-slate-500 uppercase">Mean Ct (Positives)</span>
                                                 <span id="sim-ct-value" class="text-brand-blue">28</span>
                                             </div>
                                             <input type="range" id="sim-mean-ct" min="15" max="38" value="28" oninput="document.getElementById('sim-ct-value').innerText = this.value" class="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-brand-blue">
@@ -669,7 +678,7 @@
                     <div class="flex justify-between items-center">
                         <div>
                             <h4 class="text-lg font-bold text-slate-800">96-Well Plate Layout Designer</h4>
-                            <p class="text-xs text-slate-400 mt-1">Define standard well assignments for this assay template.</p>
+                            <p class="text-xs text-slate-500 mt-1">Define standard well assignments for this assay template.</p>
                         </div>
                         <div class="flex gap-2">
                             <button onclick="clearPlate()" class="px-4 py-2 border border-slate-200 text-slate-500 text-xs font-bold rounded-lg hover:bg-slate-50 transition-all">Reset Grid</button>
@@ -684,7 +693,7 @@
                         </div>
                         <div class="w-64 space-y-6">
                             <div class="glass-panel p-6 rounded-2xl space-y-4">
-                                <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Well Legend</h5>
+                                <h5 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Well Legend</h5>
                                 <div class="space-y-3" id="well-legend">
                                     <div class="flex items-center gap-3 cursor-pointer group" onclick="setWellBrush('sample')">
                                         <div id="legend-sample" class="well-cell well-sample group-hover:shadow-md transition-all">S</div> 
@@ -707,7 +716,7 @@
                                         <span class="text-xs font-medium text-slate-600">Empty / Blocked</span>
                                     </div>
                                 </div>
-                                <p class="text-[10px] text-slate-400 leading-relaxed mt-4 italic border-t border-slate-50 pt-4">
+                                <p class="text-[10px] text-slate-500 leading-relaxed mt-4 italic border-t border-slate-50 pt-4">
                                     Click a legend icon to select a brush, then drag across the grid to paint.
                                 </p>
                             </div>
@@ -741,18 +750,18 @@
             class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden hidden transform transition-all">
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800" title="Interface for creating complex logical conditions for outcome determination.">Expression Builder</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+                <button onclick="closeModal()" class="text-slate-500 hover:text-slate-700">✕</button>
             </div>
             <div class="p-8 space-y-6">
                 <div class="space-y-4">
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Outcome
+                    <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Outcome
                         Message / UI Label</label>
                     <input type="text" id="rule-out-name"
                         class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                         placeholder="e.g. POSITIVE">
 
                     <div class="pt-4 space-y-4">
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Logical
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Logical
                             Expression</label>
                         <div id="expression-rows" class="space-y-2">
                             <!-- Rule rows -->
@@ -776,56 +785,56 @@
             <div class="p-6 border-b border-slate-100 flex justify-between items-center">
                 <div>
                     <h3 class="text-lg font-bold text-slate-800">Firebase Project Setup</h3>
-                    <p class="text-sm text-slate-400 mt-1">Configure Firestore persistence for the pcrai-assayspecs workspace.</p>
+                    <p class="text-sm text-slate-500 mt-1">Configure Firestore persistence for the pcrai-assayspecs workspace.</p>
                 </div>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">✕</button>
+                <button onclick="closeModal()" class="text-slate-500 hover:text-slate-700">✕</button>
             </div>
             <div class="p-6 space-y-6">
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Project ID</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Project ID</label>
                         <input type="text" id="firebase-project-id"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="pcrai-assayspecs">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Admin Email</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Admin Email</label>
                         <input type="email" id="firebase-user-email"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="dboneku@gmail.com">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">API Key</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">API Key</label>
                         <input type="text" id="firebase-api-key"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="Paste from Firebase web app config">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Auth Domain</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Auth Domain</label>
                         <input type="text" id="firebase-auth-domain"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="pcrai-assayspecs.firebaseapp.com">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">App ID</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">App ID</label>
                         <input type="text" id="firebase-app-id"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="1:123:web:abc">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Messaging Sender ID</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Messaging Sender ID</label>
                         <input type="text" id="firebase-messaging-sender-id"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="1234567890">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Storage Bucket</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Storage Bucket</label>
                         <input type="text" id="firebase-storage-bucket"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="pcrai-assayspecs.firebasestorage.app">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Measurement ID</label>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Measurement ID</label>
                         <input type="text" id="firebase-measurement-id"
                             class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
                             placeholder="Optional">
@@ -835,7 +844,7 @@
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2 text-sm text-slate-600">
                     <p class="font-semibold text-slate-700">Required from Firebase Console</p>
                     <p>Create or open project <span class="font-mono text-xs">pcrai-assayspecs</span>, enable Firestore, add a Web App, and paste its config values here. Project name and email alone are not enough to derive a valid browser config.</p>
-                    <p id="firebase-sync-message" class="text-xs text-slate-400">Cloud sync is currently disabled. Local browser storage remains active.</p>
+                    <p id="firebase-sync-message" class="text-xs text-slate-500">Cloud sync is currently disabled. Local browser storage remains active.</p>
                 </div>
             </div>
             <div class="p-6 bg-slate-50 flex justify-between items-center gap-3">
@@ -1354,6 +1363,7 @@
         let editingRuleIdx = null;
         const collapsedGroups = {};
         const collapsedClients = {};
+        let sidebarSearch = '';
 
         function saveState() {
             attachStateAliases(state);
@@ -1443,6 +1453,10 @@
         function renderSidebar() {
             const list = document.getElementById('assay-list');
             list.innerHTML = '';
+
+            // Update search clear button visibility
+            const clearBtn = document.getElementById('sidebar-search-clear');
+            if (clearBtn) clearBtn.classList.toggle('hidden', !sidebarSearch);
             
             // Health Logic
             const getHealth = (assay) => {
@@ -1465,19 +1479,19 @@
                 clientHeader.innerHTML = `
                     <div class="flex items-start justify-between gap-3">
                         <button onclick="selectClient('${client.id}')" class="text-left flex-1 min-w-0">
-                            <span class="block text-[10px] font-bold uppercase tracking-[0.2em] ${state.activeClientId === client.id ? 'text-brand-blue' : 'text-slate-400'}">Client</span>
+                            <span class="block text-[10px] font-bold uppercase tracking-[0.2em] ${state.activeClientId === client.id ? 'text-brand-blue' : 'text-slate-500'}">Client</span>
                             <span class="block text-sm font-bold text-slate-800 truncate">${client.name}</span>
-                            <span class="block text-[10px] text-slate-400 mt-1">${Object.keys(client.assays || {}).length} test menu(s)</span>
+                            <span class="block text-[10px] text-slate-500 mt-1">${Object.keys(client.assays || {}).length} test menu(s)</span>
                         </button>
                         <div class="flex items-center gap-1">
                             <button onclick="createNewAssay('${client.id}')" class="px-2 py-1 text-[10px] font-bold rounded bg-brand-blue/10 text-brand-blue hover:bg-brand-blue hover:text-white transition-all">+ Test</button>
-                            <button onclick="renameClient('${client.id}', event)" class="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded transition-all" title="Rename Client">
+                            <button onclick="renameClient('${client.id}', event)" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-all" title="Rename Client">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                             </button>
-                            <button onclick="deleteClient('${client.id}', event)" class="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="Delete Client">
+                            <button onclick="deleteClient('${client.id}', event)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="Delete Client">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
-                            <button onclick="collapsedClients['${client.id}'] = !collapsedClients['${client.id}']; renderSidebar();" class="p-1.5 text-slate-300 hover:text-slate-600 hover:bg-slate-100 rounded transition-all" title="${isClientCollapsed ? 'Expand' : 'Collapse'}">
+                            <button onclick="collapsedClients['${client.id}'] = !collapsedClients['${client.id}']; renderSidebar();" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-all" title="${isClientCollapsed ? 'Expand' : 'Collapse'}">
                                 <svg class="w-3.5 h-3.5 transition-transform ${isClientCollapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                             </button>
                         </div>
@@ -1490,7 +1504,7 @@
                 const assays = Object.values(client.assays || {});
                 if (assays.length === 0) {
                     const emptyClient = document.createElement('div');
-                    emptyClient.className = 'px-4 py-4 text-xs text-slate-400';
+                    emptyClient.className = 'px-4 py-4 text-xs text-slate-500';
                     emptyClient.innerText = 'No test menus stored for this client yet.';
                     clientCard.appendChild(emptyClient);
                 }
@@ -1516,18 +1530,18 @@
                     const metaDiv = document.createElement('div');
                     metaDiv.className = 'flex items-center gap-3 mt-1';
                     metaDiv.innerHTML = `
-                        <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                        <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
                             ${Object.keys(assay.targets || {}).length}
                         </div>
-                        <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                        <div class="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
                             ${(assay.rules || []).length}
                         </div>
                     `;
 
                     const delBtn = document.createElement('button');
-                    delBtn.className = `absolute ${indent ? 'right-3' : 'right-4'} bottom-4 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all`;
+                    delBtn.className = `absolute ${indent ? 'right-3' : 'right-4'} bottom-4 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all`;
                     delBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>';
                     delBtn.onclick = (e) => deleteAssay(assay.id, e, client.id);
                     delBtn.title = 'Delete Test Menu';
@@ -1539,10 +1553,11 @@
                     return itemContainer;
                 };
 
-                // Separate ungrouped vs grouped assays
+                // Separate ungrouped vs grouped assays, filter by search
                 const grouped = {};
                 const ungrouped = [];
                 assays.forEach(assay => {
+                    if (sidebarSearch && !assay.name.toLowerCase().includes(sidebarSearch)) return;
                     const grp = (assay.general?.group || '').trim();
                     if (grp) {
                         if (!grouped[grp]) grouped[grp] = [];
@@ -1552,21 +1567,19 @@
                     }
                 });
 
-                // Render ungrouped assays directly
-                ungrouped.forEach(assay => clientCard.appendChild(makeAssayItem(assay, false)));
-
-                // Render groups with collapsible headers
+                // Render groups FIRST with teal collapsible headers
                 Object.entries(grouped).forEach(([groupName, groupAssays]) => {
                     const groupKey = client.id + '|' + groupName;
-                    const isCollapsed = collapsedGroups[groupKey] === true;
+                    // Auto-expand groups when searching
+                    const isCollapsed = sidebarSearch ? false : (collapsedGroups[groupKey] === true);
 
                     const groupHeader = document.createElement('div');
-                    groupHeader.className = 'border-t border-slate-100 px-4 py-2 flex items-center justify-between cursor-pointer hover:bg-slate-50 select-none';
+                    groupHeader.className = 'border-t border-slate-100 pl-3 pr-4 py-2 flex items-center justify-between cursor-pointer hover:bg-teal-50/50 select-none border-l-4 border-l-teal-500 bg-teal-50/30';
                     groupHeader.innerHTML = `
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">${groupName}</span>
+                        <span class="text-[10px] font-bold uppercase tracking-widest text-teal-700">${groupName}</span>
                         <div class="flex items-center gap-2">
-                            <span class="text-[10px] text-slate-400">${groupAssays.length}</span>
-                            <svg class="w-3 h-3 text-slate-400 transition-transform ${isCollapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                            <span class="text-[10px] text-teal-500 font-semibold">${groupAssays.length}</span>
+                            <svg class="w-3 h-3 text-teal-500 transition-transform ${isCollapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                         </div>`;
                     groupHeader.onclick = () => { collapsedGroups[groupKey] = !collapsedGroups[groupKey]; renderSidebar(); };
                     clientCard.appendChild(groupHeader);
@@ -1576,8 +1589,23 @@
                     }
                 });
 
+                // Render ungrouped assays after groups
+                ungrouped.forEach(assay => clientCard.appendChild(makeAssayItem(assay, false)));
+
+                // During search: skip client cards with no matching assays
+                const totalMatches = ungrouped.length + Object.values(grouped).reduce((s, a) => s + a.length, 0);
+                if (sidebarSearch && totalMatches === 0) return;
+
                 list.appendChild(clientCard);
             });
+
+            // No results message
+            if (sidebarSearch && list.children.length === 0) {
+                const msg = document.createElement('div');
+                msg.className = 'px-6 py-8 text-center text-xs text-slate-500';
+                msg.innerHTML = `<svg class="w-8 h-8 mx-auto mb-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0"></path></svg>No tests match "<strong>${sidebarSearch}</strong>"`;
+                list.appendChild(msg);
+            }
         }
 
         function createNewAssay(clientId = state.activeClientId) {
@@ -1626,7 +1654,7 @@
                 if (el) el.classList.add('hidden');
                 if (tabEl) {
                     tabEl.classList.remove('tab-active');
-                    tabEl.classList.add('text-slate-400');
+                    tabEl.classList.add('text-slate-500');
                 }
             });
             const activePanel = document.getElementById(`panel-${tab}`);
@@ -1634,7 +1662,7 @@
             if (activePanel) activePanel.classList.remove('hidden');
             if (activeTab) {
                 activeTab.classList.add('tab-active');
-                activeTab.classList.remove('text-slate-400');
+                activeTab.classList.remove('text-slate-500');
             }
 
             if (tab === 'targets') renderTargets();
@@ -1709,13 +1737,13 @@
             const dd = document.getElementById('group-dropdown');
             if (!dd) return;
             const groups = getExistingGroups(filter);
-            if (groups.length === 0) { dd.innerHTML = '<div class="px-3 py-2 text-xs text-slate-400 italic">No existing groups — type to create one</div>'; return; }
+            if (groups.length === 0) { dd.innerHTML = '<div class="px-3 py-2 text-xs text-slate-500 italic">No existing groups — type to create one</div>'; return; }
             dd.innerHTML = '';
             groups.forEach(grp => {
                 const item = document.createElement('button');
                 item.type = 'button';
                 item.className = 'w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-brand-blue/5 hover:text-brand-blue transition-all flex items-center gap-2';
-                item.innerHTML = `<svg class="w-3 h-3 text-slate-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>${grp}`;
+                item.innerHTML = `<svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-5 5a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path></svg>${grp}`;
                 item.onmousedown = (e) => { e.preventDefault(); selectGroup(grp); };
                 dd.appendChild(item);
             });
@@ -1798,7 +1826,7 @@
             });
 
             if (tags.length === 0) {
-                container.innerHTML = '<span class="text-[10px] text-slate-300 italic">No types selected</span>';
+                container.innerHTML = '<span class="text-[10px] text-slate-400 italic">No types selected</span>';
             }
         }
 
@@ -1810,11 +1838,11 @@
 
             if (mode === 'qual') {
                 ql.className = "px-3 py-1 text-[10px] font-bold rounded transition-all bg-white text-brand-blue shadow-sm";
-                qn.className = "px-3 py-1 text-[10px] font-bold rounded transition-all text-slate-400 hover:text-slate-600";
+                qn.className = "px-3 py-1 text-[10px] font-bold rounded transition-all text-slate-500 hover:text-slate-700";
                 container.classList.add('hidden');
             } else {
                 qn.className = "px-3 py-1 text-[10px] font-bold rounded transition-all bg-white text-brand-blue shadow-sm";
-                ql.className = "px-3 py-1 text-[10px] font-bold rounded transition-all text-slate-400 hover:text-slate-600";
+                ql.className = "px-3 py-1 text-[10px] font-bold rounded transition-all text-slate-500 hover:text-slate-700";
                 container.classList.remove('hidden');
                 // Also ensure quant field visibility internally if switching to quant
                 setQuantMode(state.assays[activeAssayId].general.quantMode);
@@ -1897,12 +1925,12 @@
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-4">
                         <div class="flex-1 grid grid-cols-4 gap-4">
-                            <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Target Name</label><input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.name}" oninput="updateTarget('${tid}', 'name', this.value)"></div>
-                            <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Type</label><select class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" onchange="updateTarget('${tid}', 'type', this.value)"><option ${t.type === 'Target' ? 'selected' : ''}>Target</option><option ${t.type === 'IC' ? 'selected' : ''}>IC</option><option ${t.type === 'Passive' ? 'selected' : ''}>Passive</option></select></div>
-                            <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Indicator (Dye)</label><input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.indicator}" placeholder="FAM, HEX, CY5" oninput="updateTarget('${tid}', 'indicator', this.value)"></div>
-                            <div><label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">LOD / Threshold</label><input type="number" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.threshold}" oninput="updateTarget('${tid}', 'threshold', this.value)"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Target Name</label><input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.name}" oninput="updateTarget('${tid}', 'name', this.value)"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Type</label><select class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" onchange="updateTarget('${tid}', 'type', this.value)"><option ${t.type === 'Target' ? 'selected' : ''}>Target</option><option ${t.type === 'IC' ? 'selected' : ''}>IC</option><option ${t.type === 'Passive' ? 'selected' : ''}>Passive</option></select></div>
+                            <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Indicator (Dye)</label><input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.indicator}" placeholder="FAM, HEX, CY5" oninput="updateTarget('${tid}', 'indicator', this.value)"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">LOD / Threshold</label><input type="number" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.threshold}" oninput="updateTarget('${tid}', 'threshold', this.value)"></div>
                         </div>
-                        <button onclick="removeTarget('${tid}')" class="ml-4 p-2 text-slate-300 hover:text-red-500">✕</button>
+                        <button onclick="removeTarget('${tid}')" class="ml-4 p-2 text-slate-400 hover:text-red-500">✕</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -1939,42 +1967,42 @@
                 row.innerHTML = `
                     <div class="flex-1 flex flex-wrap gap-3 items-end">
                         <div class="flex-1 min-w-[140px]">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Control Name</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Control Name</label>
                             <input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.name}" oninput="updateControl('${cid}', 'name', this.value)">
                         </div>
                         <div class="flex-1 min-w-[140px]">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Label in Runfile/Name</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Label in Runfile/Name</label>
                             <input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" placeholder="ID as per Instrument" value="${c.runfileLabel || ''}" oninput="updateControl('${cid}', 'runfileLabel', this.value)">
                         </div>
                         <div class="w-24">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Lot Number</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Lot Number</label>
                             <input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.lot}" oninput="updateControl('${cid}', 'lot', this.value)">
                         </div>
                         <div class="w-36">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Entry Date</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Entry Date</label>
                             <input type="date" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.entryDate || ''}" oninput="updateControl('${cid}', 'entryDate', this.value)">
                         </div>
                         <div class="w-36">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Effective Date</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Effective Date</label>
                             <input type="date" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.effectiveDate || ''}" oninput="updateControl('${cid}', 'effectiveDate', this.value)">
                         </div>
                         <div class="w-36">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Expiration Date <span class="text-slate-300">(opt)</span></label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Expiration Date <span class="text-slate-400">(opt)</span></label>
                             <input type="date" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.expirationDate || ''}" oninput="updateControl('${cid}', 'expirationDate', this.value)">
                         </div>
                         <div class="w-20">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Mean (Ct)</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Mean (Ct)</label>
                             <input type="number" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.mean}" oninput="updateControl('${cid}', 'mean', this.value)">
                         </div>
                         <div class="w-16">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">SD</label>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">SD</label>
                             <input type="number" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${c.sd}" oninput="updateControl('${cid}', 'sd', this.value)">
                         </div>
                         <div class="w-32">
-                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
                                 Type 
                                 <span title="PC: Positive Control | NC: Negative Control | IC: Internal Control | Crossover: Parallel New Lot Evaluation" class="cursor-help inline-flex p-1 -m-1">
-                                    <svg class="w-3 h-3 text-slate-400 hover:text-slate-600 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-3 h-3 text-slate-500 hover:text-slate-700 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </span>
@@ -1987,7 +2015,7 @@
                             </select>
                         </div>
                     </div>
-                    <button onclick="removeControl('${cid}')" class="p-2 text-slate-300 hover:text-red-500 mb-0.5">✕</button>
+                    <button onclick="removeControl('${cid}')" class="p-2 text-slate-400 hover:text-red-500 mb-0.5">✕</button>
                 `;
                 container.appendChild(row);
             });
@@ -2026,14 +2054,14 @@
                         <div class="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center text-xs font-bold">${idx + 1}</div>
                         <div>
                             <span class="text-sm font-bold text-slate-800">${rule.outcome}</span>
-                            <div class="text-[10px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">${rule.expressionStr}</div>
+                            <div class="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-0.5">${rule.expressionStr}</div>
                         </div>
                     </div>
                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onclick="openRuleBuilder(${idx})" class="p-2 text-slate-400 hover:text-brand-blue">
+                        <button onclick="openRuleBuilder(${idx})" class="p-2 text-slate-500 hover:text-brand-blue">
                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                         </button>
-                        <button onclick="deleteRule(${idx})" class="p-2 text-slate-400 hover:text-red-500">
+                        <button onclick="deleteRule(${idx})" class="p-2 text-slate-500 hover:text-red-500">
                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                         </button>
                     </div>
@@ -2071,7 +2099,7 @@
             });
 
             row.innerHTML = `
-                <div class="w-12 text-[10px] font-bold text-slate-300 uppercase">${container.children.length === 0 ? 'IF' : 'AND'}</div>
+                <div class="w-12 text-[10px] font-bold text-slate-400 uppercase">${container.children.length === 0 ? 'IF' : 'AND'}</div>
                 ${targetSelect.outerHTML}
                 <select class="w-20 bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm">
                     <option value="==" ${data.op === '==' ? 'selected' : ''}>IS</option>
@@ -2083,7 +2111,7 @@
                     <option value="ND" ${data.val === 'ND' ? 'selected' : ''}>ND</option>
                     <option value="INV" ${data.val === 'INV' ? 'selected' : ''}>INVALID</option>
                 </select>
-                <button onclick="this.parentElement.remove()" class="p-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                <button onclick="this.parentElement.remove()" class="p-2 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
             `;
             container.appendChild(row);
         }
@@ -2631,14 +2659,14 @@
                     color: 'text-brand-blue',
                     content: `
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Test Code</span><span class="font-bold text-slate-700">${g.testCode || 'N/A'}</span></div>
-                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Assay Mode</span><span class="font-bold text-slate-700 uppercase">${g.assayMode || 'Qualitative'}</span></div>
-                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Units</span><span class="font-bold text-slate-700">${g.units || 'N/A'}</span></div>
-                            <div><span class="text-slate-400 block mb-1 uppercase font-bold tracking-wider">Rounding</span><span class="font-bold text-slate-700">${g.rounding || '0'} decimals</span></div>
+                            <div><span class="text-slate-500 block mb-1 uppercase font-bold tracking-wider">Test Code</span><span class="font-bold text-slate-700">${g.testCode || 'N/A'}</span></div>
+                            <div><span class="text-slate-500 block mb-1 uppercase font-bold tracking-wider">Assay Mode</span><span class="font-bold text-slate-700 uppercase">${g.assayMode || 'Qualitative'}</span></div>
+                            <div><span class="text-slate-500 block mb-1 uppercase font-bold tracking-wider">Units</span><span class="font-bold text-slate-700">${g.units || 'N/A'}</span></div>
+                            <div><span class="text-slate-500 block mb-1 uppercase font-bold tracking-wider">Rounding</span><span class="font-bold text-slate-700">${g.rounding || '0'} decimals</span></div>
                         </div>
                         <div class="mt-4 pt-4 border-t border-slate-50 flex flex-wrap gap-2">
-                            <span class="text-slate-400 text-[10px] font-bold uppercase tracking-wider block w-full mb-1">Sample Types</span>
-                            ${g.sampleType && g.sampleType.length > 0 ? g.sampleType.map(st => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">${st}</span>`).join('') : '<span class="text-slate-400 italic">No sample types defined</span>'}
+                            <span class="text-slate-500 text-[10px] font-bold uppercase tracking-wider block w-full mb-1">Sample Types</span>
+                            ${g.sampleType && g.sampleType.length > 0 ? g.sampleType.map(st => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">${st}</span>`).join('') : '<span class="text-slate-500 italic">No sample types defined</span>'}
                         </div>
                     `
                 },
@@ -2646,10 +2674,10 @@
                     title: `Assay Targets (${targets.length})`,
                     icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>`,
                     color: 'text-brand-teal',
-                    content: targets.length === 0 ? '<p class="text-xs text-slate-400 italic">No targets defined</p>' : `
+                    content: targets.length === 0 ? '<p class="text-xs text-slate-500 italic">No targets defined</p>' : `
                         <div class="overflow-x-auto">
                             <table class="w-full text-xs text-left">
-                                <thead class="text-slate-400 uppercase font-bold tracking-wider">
+                                <thead class="text-slate-500 uppercase font-bold tracking-wider">
                                     <tr class="border-b border-slate-50">
                                         <th class="pb-2">Target</th>
                                         <th class="pb-2">Type</th>
@@ -2678,18 +2706,18 @@
                     content: `
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div>
-                                <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Active Controls (${controls.length})</h5>
-                                ${controls.length === 0 ? '<p class="text-xs text-slate-400 italic">No controls defined</p>' : `
+                                <h5 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Active Controls (${controls.length})</h5>
+                                ${controls.length === 0 ? '<p class="text-xs text-slate-500 italic">No controls defined</p>' : `
                                     <div class="space-y-2">
                                         ${controls.map(c => `
                                             <div class="flex justify-between items-center p-2 bg-slate-50/50 rounded-lg border border-slate-100">
                                                 <div>
                                                     <span class="text-xs font-bold text-slate-700">${c.name}</span>
-                                                    <span class="text-[10px] text-slate-400 block">${c.lot || 'Empty Lot'} • ${c.type}</span>
+                                                    <span class="text-[10px] text-slate-500 block">${c.lot || 'Empty Lot'} • ${c.type}</span>
                                                 </div>
                                                 <div class="text-right">
                                                     <span class="text-xs font-bold text-brand-blue">${c.mean} Ct</span>
-                                                    <span class="text-[10px] text-slate-400 block">±${c.sd} SD</span>
+                                                    <span class="text-[10px] text-slate-500 block">±${c.sd} SD</span>
                                                 </div>
                                             </div>
                                         `).join('')}
@@ -2697,12 +2725,12 @@
                                 `}
                             </div>
                             <div>
-                                <h5 class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Westgard Settings</h5>
+                                <h5 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Westgard Settings</h5>
                                 <div class="grid grid-cols-2 gap-2">
                                     ${Object.entries(westgard).map(([rid, conf]) => `
                                         <div class="flex items-center gap-2 p-1.5 bg-white border border-slate-50 rounded shadow-sm">
                                             <div class="w-2 h-2 rounded-full ${conf.enabled ? (conf.level === 'error' ? 'bg-red-500' : 'bg-orange-400') : 'bg-slate-200'}"></div>
-                                            <span class="text-xs font-bold ${conf.enabled ? 'text-slate-700' : 'text-slate-300'}">${rid}</span>
+                                            <span class="text-xs font-bold ${conf.enabled ? 'text-slate-700' : 'text-slate-400'}">${rid}</span>
                                             ${conf.enabled ? `<span class="text-[8px] font-bold uppercase tracking-widest ml-auto ${conf.level === 'error' ? 'text-red-400' : 'text-orange-400'}">${conf.level}</span>` : ''}
                                         </div>
                                     `).join('')}
@@ -2715,7 +2743,7 @@
                     title: `Outcome Evaluation Rules (${rules.length})`,
                     icon: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h10a2 2 0 012 2v2M7 7h10"></path></svg>`,
                     color: 'text-slate-800',
-                    content: rules.length === 0 ? '<p class="text-xs text-slate-400 italic">No logical rules defined</p>' : `
+                    content: rules.length === 0 ? '<p class="text-xs text-slate-500 italic">No logical rules defined</p>' : `
                         <div class="space-y-2">
                             ${rules.map((r, i) => `
                                 <div class="flex items-start gap-3 p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
@@ -2847,10 +2875,10 @@
                 const card = document.createElement('div');
                 card.className = "p-3 bg-white border border-slate-100 rounded-xl shadow-sm flex flex-col gap-2 min-w-[100px]";
                 card.innerHTML = `
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate w-full">${t.name}</span>
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tight truncate w-full">${t.name}</span>
                     <div class="flex gap-1">
                         ${['POS', 'NEG', 'ND'].map(val => `
-                            <button onclick="toggleSimValue('${t.name}', '${val}')" class="flex-1 py-1 text-[9px] font-bold rounded transition-all ${simState[t.name] === val ? 'bg-brand-blue text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}">${val}</button>
+                            <button onclick="toggleSimValue('${t.name}', '${val}')" class="flex-1 py-1 text-[9px] font-bold rounded transition-all ${simState[t.name] === val ? 'bg-brand-blue text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'}">${val}</button>
                         `).join('')}
                     </div>
                 `;
@@ -2993,7 +3021,7 @@
             // Summary Stats
             statsContainer.innerHTML = Object.entries(stats).map(([label, count]) => `
                 <div class="p-3 bg-white border border-slate-100 rounded-xl shadow-sm">
-                    <span class="text-[9px] text-slate-400 block uppercase font-bold truncate">${label}</span>
+                    <span class="text-[9px] text-slate-500 block uppercase font-bold truncate">${label}</span>
                     <span class="text-xl font-bold text-slate-700">${count}</span>
                 </div>
             `).join('');
@@ -3040,7 +3068,7 @@
             grid.appendChild(document.createElement('div'));
             for(let i=1; i<=12; i++) {
                 const h = document.createElement('div');
-                h.className = "text-[10px] font-bold text-slate-300 text-center pb-2";
+                h.className = "text-[10px] font-bold text-slate-400 text-center pb-2";
                 h.innerText = i;
                 grid.appendChild(h);
             }
@@ -3049,7 +3077,7 @@
             const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
             rows.forEach(r => {
                 const label = document.createElement('div');
-                label.className = "text-[10px] font-bold text-slate-300 flex items-center pr-2";
+                label.className = "text-[10px] font-bold text-slate-400 flex items-center pr-2";
                 label.innerText = r;
                 grid.appendChild(label);
 
