@@ -1,12 +1,19 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only dboneku@gmail.com (authenticated via Google) can read/write their own document.
-    // Each user's assay data is stored under assayConsole/{uid}.
+    // Access allowlist — any authenticated user may read so the app can check
+    // whether they are permitted. Only admin writes via the Firebase console.
+    match /config/access {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Per-user assay data. Any authenticated user can read/write their own doc.
+    // The application-level isAllowedUser() check is the primary access gate;
+    // users not on the allowlist are signed out before they can reach this.
     match /assayConsole/{userId} {
       allow read, write: if request.auth != null
-                         && request.auth.uid == userId
-                         && request.auth.token.email == 'dboneku@gmail.com';
+                         && request.auth.uid == userId;
     }
   }
 }

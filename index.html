@@ -75,27 +75,47 @@
 
     <!-- Auth: Login Screen -->
     <div id="login-screen" class="fixed inset-0 bg-brand-dark z-[200] flex flex-col items-center justify-center">
-        <div class="text-center max-w-sm px-6">
+        <div class="text-center max-w-sm w-full px-6">
             <img src="diagnosticsailogo.png" alt="Diagnostics AI Logo" class="h-14 w-auto mx-auto mb-6">
             <h2 class="text-2xl font-bold text-white mb-2">pcr.ai Assay Console</h2>
             <p class="text-slate-500 text-sm mb-8">Sign in to access your assay configurations.</p>
+
+            <!-- Google -->
             <button id="google-signin-btn" onclick="signInWithGoogle()"
-                class="flex items-center gap-3 bg-white text-slate-700 font-semibold px-6 py-3 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all mx-auto">
+                class="flex items-center gap-3 bg-white text-slate-700 font-semibold px-6 py-3 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all mx-auto w-full justify-center mb-3">
                 <svg class="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4"
-                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                    <path fill="#34A853"
-                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                    <path fill="#FBBC05"
-                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                    <path fill="#EA4335"
-                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                 </svg>
                 Sign in with Google
             </button>
-            <p id="login-error"
-                class="hidden text-red-300 text-sm mt-5 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3">
-            </p>
+
+            <!-- Microsoft (hidden until Azure app credentials are configured) -->
+            <button id="microsoft-signin-btn" onclick="signInWithMicrosoft()" class="hidden">
+
+            <!-- Divider -->
+            <div class="flex items-center gap-3 mb-6">
+                <div class="flex-1 h-px bg-white/10"></div>
+                <span class="text-slate-500 text-xs uppercase tracking-widest">or email link</span>
+                <div class="flex-1 h-px bg-white/10"></div>
+            </div>
+
+            <!-- Magic Link -->
+            <div id="magic-link-section">
+                <div class="flex gap-2">
+                    <input id="magic-link-email" type="email" placeholder="your@email.com"
+                        class="flex-1 bg-white/10 border border-white/20 text-white placeholder-slate-500 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-brand-accent">
+                    <button onclick="sendMagicLink()"
+                        class="px-4 py-2.5 bg-brand-accent hover:bg-blue-500 text-white font-semibold rounded-xl transition-all text-sm whitespace-nowrap">
+                        Send Link
+                    </button>
+                </div>
+                <p id="magic-link-sent" class="hidden text-emerald-400 text-sm mt-3">Check your email for a sign-in link.</p>
+            </div>
+
+            <p id="login-error" class="hidden text-red-300 text-sm mt-5 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3"></p>
         </div>
     </div>
 
@@ -1146,7 +1166,40 @@
         let cloudSaveTimer = null;
         let currentUser = null;
         let firebaseAuthInstance = null;
-        const ALLOWED_EMAIL = 'dboneku@gmail.com';
+
+        // Hardcoded fallback allowlist — used if Firestore config/access doc is missing
+        const FALLBACK_ALLOWED_EMAILS = ['dboneku@gmail.com'];
+        const FALLBACK_ALLOWED_DOMAINS = ['diagnostics.ai'];
+
+        // Loaded from Firestore config/access: { emails: [...], domains: [...] }
+        let accessConfig = null;
+
+        async function loadAccessConfig() {
+            if (!firestoreDb) return;
+            try {
+                const snap = await firestoreDb.collection('config').doc('access').get();
+                if (snap.exists) {
+                    accessConfig = snap.data();
+                } else {
+                    // Auto-create the document from the hardcoded fallback so it's
+                    // immediately editable in the Firebase console
+                    accessConfig = {emails: FALLBACK_ALLOWED_EMAILS.slice(), domains: FALLBACK_ALLOWED_DOMAINS.slice()};
+                    await firestoreDb.collection('config').doc('access').set(accessConfig);
+                }
+            } catch (err) {
+                console.warn('Could not load access config from Firestore; using fallback.', err);
+                accessConfig = null;
+            }
+        }
+
+        function isAllowedUser(email) {
+            if (!email) return false;
+            const lower = email.toLowerCase();
+            const emails = (accessConfig && accessConfig.emails) ? accessConfig.emails.map(e => e.toLowerCase()) : FALLBACK_ALLOWED_EMAILS;
+            const domains = (accessConfig && accessConfig.domains) ? accessConfig.domains.map(d => d.toLowerCase()) : FALLBACK_ALLOWED_DOMAINS;
+            if (emails.includes(lower)) return true;
+            return domains.some(d => lower.endsWith('@' + d));
+        }
 
         function hasCompleteFirebaseConfigValues(config) {
             return Boolean(
@@ -1441,7 +1494,9 @@
                         }
                         return;
                     }
-                    if (user.email !== ALLOWED_EMAIL) {
+                    // Load the allowlist from Firestore before checking access
+                    await loadAccessConfig();
+                    if (!isAllowedUser(user.email)) {
                         currentUser = null;
                         updateUserUI(null);
                         await firebaseAuthInstance.signOut();
@@ -1471,7 +1526,6 @@
                     return;
                 }
                 const provider = new firebase.auth.GoogleAuthProvider();
-                provider.setCustomParameters({login_hint: ALLOWED_EMAIL});
                 await firebaseAuthInstance.signInWithPopup(provider);
                 // onAuthStateChanged handles the rest
             } catch (err) {
@@ -1479,6 +1533,81 @@
                 showLoginScreen(`Sign-in failed: ${err.message}`);
             } finally {
                 if (btn) btn.disabled = false;
+            }
+        }
+
+        async function signInWithMicrosoft() {
+            const btn = document.getElementById('microsoft-signin-btn');
+            if (btn) btn.disabled = true;
+            try {
+                await ensureFirebaseReady();
+                if (!firebaseAuthInstance) {
+                    showLoginScreen('Firebase is not fully configured. Check firebase-web-config.js.');
+                    return;
+                }
+                const provider = new firebase.auth.OAuthProvider('microsoft.com');
+                provider.setCustomParameters({prompt: 'select_account'});
+                await firebaseAuthInstance.signInWithPopup(provider);
+                // onAuthStateChanged handles the rest
+            } catch (err) {
+                console.error('Microsoft sign-in failed.', err);
+                showLoginScreen(`Sign-in failed: ${err.message}`);
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
+
+        async function sendMagicLink() {
+            const emailInput = document.getElementById('magic-link-email');
+            const email = emailInput ? emailInput.value.trim() : '';
+            if (!email) {
+                showLoginScreen('Please enter your email address.');
+                return;
+            }
+            if (!isAllowedUser(email)) {
+                showLoginScreen('Access is restricted to authorized users only.');
+                return;
+            }
+            try {
+                await ensureFirebaseReady();
+                if (!firebaseAuthInstance) {
+                    showLoginScreen('Firebase is not fully configured. Check firebase-web-config.js.');
+                    return;
+                }
+                const actionCodeSettings = {
+                    url: window.location.href,
+                    handleCodeInApp: true
+                };
+                await firebaseAuthInstance.sendSignInLinkToEmail(email, actionCodeSettings);
+                window.localStorage.setItem('emailForSignIn', email);
+                const sentMsg = document.getElementById('magic-link-sent');
+                if (sentMsg) sentMsg.classList.remove('hidden');
+                const errEl = document.getElementById('login-error');
+                if (errEl) errEl.classList.add('hidden');
+            } catch (err) {
+                console.error('Magic link send failed.', err);
+                showLoginScreen(`Could not send link: ${err.message}`);
+            }
+        }
+
+        async function handleEmailLinkSignIn() {
+            try {
+                await ensureFirebaseReady();
+                if (!firebaseAuthInstance) return;
+                if (!firebaseAuthInstance.isSignInWithEmailLink(window.location.href)) return;
+                let email = window.localStorage.getItem('emailForSignIn');
+                if (!email) {
+                    email = window.prompt('Please confirm your email address to complete sign-in:');
+                }
+                if (!email) return;
+                await firebaseAuthInstance.signInWithEmailLink(email, window.location.href);
+                window.localStorage.removeItem('emailForSignIn');
+                // Clean the link from the URL without reload
+                window.history.replaceState({}, document.title, window.location.pathname);
+                // onAuthStateChanged handles the rest
+            } catch (err) {
+                console.error('Email link sign-in failed.', err);
+                showLoginScreen(`Sign-in link error: ${err.message}`);
             }
         }
 
@@ -3147,7 +3276,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-
         // --- Import Modal Helpers ---
 
         function renderImportModal(count) {
@@ -3802,6 +3930,8 @@
                 // The onAuthStateChanged listener handles hiding the login screen
                 // and loading cloud data once the user is authenticated.
                 await ensureFirebaseReady();
+                // Handle email magic link if the URL contains one
+                await handleEmailLinkSignIn();
             } else {
                 // No Firebase config — run local-only, skip login.
                 hideLoginScreen();
