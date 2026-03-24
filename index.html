@@ -337,14 +337,8 @@
                             </div>
                         </div>
 
-                        <!-- Threshold & Cycles -->
+                        <!-- Cycles -->
                         <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Analysis Threshold</label>
-                                <input type="number" id="inp-eval-threshold"
-                                    class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
-                                    placeholder="0.2" oninput="captureGeneral()">
-                            </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Max Instrument Cycles</label>
                                 <input type="number" id="inp-max-cycles"
@@ -443,22 +437,20 @@
                                 class="px-4 py-1.5 text-xs font-bold rounded-md transition-all">Per-Plate
                                 Standard Curve</button>
                         </div>
-                        <div id="quant-stored-fields" class="grid grid-cols-3 gap-4">
-                            <div><label
-                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Slope</label><input
-                                    type="number" id="inp-slope"
-                                    class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
-                                    oninput="captureGeneral()"></div>
-                            <div><label
-                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Intercept</label><input
-                                    type="number" id="inp-intercept"
-                                    class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
-                                    oninput="captureGeneral()"></div>
-                            <div><label
-                                    class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Min
-                                    R²</label><input type="number" id="inp-r2"
-                                    class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm"
-                                    placeholder="0.99" oninput="captureGeneral()"></div>
+                        <div id="quant-stored-fields">
+                            <table class="w-full text-xs border-collapse mb-2">
+                                <thead>
+                                    <tr class="text-left">
+                                        <th class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-2 pr-2 w-1/3">Instrument</th>
+                                        <th class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-2 pr-2">Slope</th>
+                                        <th class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-2 pr-2">Intercept</th>
+                                        <th class="text-[10px] font-bold text-slate-500 uppercase tracking-wider pb-2 pr-2">Min R²</th>
+                                        <th class="pb-2 w-6"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="curve-rows-body"></tbody>
+                            </table>
+                            <button onclick="addCurveRow()" type="button" class="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Add Instrument</button>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -1006,15 +998,12 @@
                     sampleType: [],
                     testCode: '',
                     group: '',
-                    evalThreshold: 0.2,
                     maxCycles: 45,
                     inhibition: true,
                     quantMode: 'stored',
                     units: 'copies/mL',
                     rounding: 'none',
-                    slope: -3.3,
-                    intercept: 40,
-                    r2: 0.99
+                    standardCurves: [{ instrument: '', slope: -3.3, intercept: 40, r2: 0.99 }]
                 },
                 targets: {},
                 lots: {},
@@ -1955,14 +1944,15 @@
             document.getElementById('inp-test-code').value = g.testCode;
             document.getElementById('inp-group').value = g.group || '';
             renderGroupDropdownOptions();
-            document.getElementById('inp-eval-threshold').value = g.evalThreshold;
             document.getElementById('inp-max-cycles').value = g.maxCycles;
             document.getElementById('chk-inhibition').checked = g.inhibition;
             document.getElementById('sel-units').value = g.units;
             document.getElementById('sel-rounding').value = g.rounding;
-            document.getElementById('inp-slope').value = g.slope;
-            document.getElementById('inp-intercept').value = g.intercept;
-            document.getElementById('inp-r2').value = g.r2;
+            // Migrate legacy single-curve format
+            if (!g.standardCurves) {
+                g.standardCurves = [{ instrument: '', slope: g.slope ?? -3.3, intercept: g.intercept ?? 40, r2: g.r2 ?? 0.99 }];
+            }
+            renderCurveRows();
 
             setAssayMode(g.assayMode || 'qual');
 
@@ -1986,15 +1976,55 @@
             // sampleType is managed via tags
             g.testCode = document.getElementById('inp-test-code').value;
             g.group = (document.getElementById('inp-group').value || '').trim();
-            g.evalThreshold = document.getElementById('inp-eval-threshold').value;
             g.maxCycles = document.getElementById('inp-max-cycles').value;
             g.inhibition = document.getElementById('chk-inhibition').checked;
             g.units = document.getElementById('sel-units').value;
             g.rounding = document.getElementById('sel-rounding').value;
-            g.slope = document.getElementById('inp-slope').value;
-            g.intercept = document.getElementById('inp-intercept').value;
-            g.r2 = document.getElementById('inp-r2').value;
             // Assay mode is captured via toggle button
+            saveState();
+        }
+
+        function renderCurveRows() {
+            const g = state.assays[activeAssayId].general;
+            const curves = g.standardCurves || [];
+            const tbody = document.getElementById('curve-rows-body');
+            if (!tbody) return;
+            const inputCls = 'w-full bg-slate-50/50 border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500';
+            tbody.innerHTML = curves.map((c, i) => `
+                <tr>
+                    <td class="pr-2 pb-1"><input type="text" id="inp-curve-${i}-instrument" value="${(c.instrument||'').replace(/"/g,'&quot;')}" placeholder="(any)" class="${inputCls}" oninput="captureCurves()"></td>
+                    <td class="pr-2 pb-1"><input type="number" id="inp-curve-${i}-slope" value="${c.slope !== '' && c.slope !== undefined ? c.slope : ''}" class="${inputCls}" oninput="captureCurves()"></td>
+                    <td class="pr-2 pb-1"><input type="number" id="inp-curve-${i}-intercept" value="${c.intercept !== '' && c.intercept !== undefined ? c.intercept : ''}" class="${inputCls}" oninput="captureCurves()"></td>
+                    <td class="pr-2 pb-1"><input type="number" id="inp-curve-${i}-r2" value="${c.r2 !== '' && c.r2 !== undefined ? c.r2 : ''}" placeholder="0.99" class="${inputCls}" oninput="captureCurves()"></td>
+                    <td class="pb-1">${curves.length > 1 ? `<button onclick="removeCurveRow(${i})" type="button" class="text-slate-400 hover:text-red-500 text-sm leading-none">&times;</button>` : ''}</td>
+                </tr>`).join('');
+        }
+
+        function captureCurves() {
+            const g = state.assays[activeAssayId].general;
+            const n = (g.standardCurves || []).length;
+            g.standardCurves = Array.from({length: n}, (_, i) => ({
+                instrument: (document.getElementById(`inp-curve-${i}-instrument`)?.value || '').trim(),
+                slope: document.getElementById(`inp-curve-${i}-slope`)?.value,
+                intercept: document.getElementById(`inp-curve-${i}-intercept`)?.value,
+                r2: document.getElementById(`inp-curve-${i}-r2`)?.value
+            }));
+            saveState();
+        }
+
+        function addCurveRow() {
+            const g = state.assays[activeAssayId].general;
+            if (!g.standardCurves) g.standardCurves = [];
+            g.standardCurves.push({ instrument: '', slope: '', intercept: '', r2: '' });
+            renderCurveRows();
+            saveState();
+        }
+
+        function removeCurveRow(idx) {
+            const g = state.assays[activeAssayId].general;
+            if (!g.standardCurves || g.standardCurves.length <= 1) return;
+            g.standardCurves.splice(idx, 1);
+            renderCurveRows();
             saveState();
         }
 
@@ -2233,9 +2263,13 @@
                         <div class="flex-1 grid grid-cols-3 gap-4">
                             <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Target Name</label><input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.name}" oninput="updateTarget('${tid}', 'name', this.value)"></div>
                             <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Indicator (Dye)</label><input type="text" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.indicator}" placeholder="FAM, HEX, CY5" oninput="updateTarget('${tid}', 'indicator', this.value)"></div>
-                            <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">LOD / Threshold</label><input type="number" title="A Ct value beyond this threshold will yield a negative result" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.threshold}" oninput="updateTarget('${tid}', 'threshold', this.value)"></div>
+                            <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">LOD / Max Ct (Pos cutoff)</label><input type="number" title="Ct at or below this value is called POSITIVE" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" value="${t.threshold}" oninput="updateTarget('${tid}', 'threshold', this.value)"></div>
                         </div>
                         <button onclick="removeTarget('${tid}')" class="ml-4 p-2 text-slate-400 hover:text-red-500">✕</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2" title="Acceptable Ct range — values outside this window may indicate inhibition or instrument error">Min Ct (acceptable range)</label><input type="number" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" placeholder="e.g. 10" value="${t.minCt || ''}" oninput="updateTarget('${tid}', 'minCt', this.value)"></div>
+                        <div><label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2" title="Fluorescence baseline crossing threshold — curves that never cross this RFU level are not considered amplified">Baseline Fluorescence Threshold (RFU)</label><input type="number" step="0.01" class="w-full bg-slate-50/50 border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm" placeholder="e.g. 0.2" value="${t.fluorThreshold || ''}" oninput="updateTarget('${tid}', 'fluorThreshold', this.value)"></div>
                     </div>
                     <div class="flex gap-6 pt-4 border-t border-slate-100">
                         <label class="flex items-center gap-3 cursor-pointer">
@@ -2260,7 +2294,7 @@
 
         function addTarget() {
             const tid = 'T' + Date.now();
-            state.assays[activeAssayId].targets[tid] = {name: 'New Target', isIC: false, isPassive: false, indicator: '', threshold: 38};
+            state.assays[activeAssayId].targets[tid] = {name: 'New Target', isIC: false, isPassive: false, indicator: '', threshold: 38, minCt: '', fluorThreshold: ''};
             saveState();
             renderTargets();
         }
@@ -2376,6 +2410,8 @@
                                     <select class="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" onchange="updateControl('${lotId}', '${cid}', 'type', this.value)">
                                         <option ${c.type === 'PC' ? 'selected' : ''}>PC</option>
                                         <option ${c.type === 'NC' ? 'selected' : ''}>NC</option>
+                                        <option ${c.type === 'NEC' ? 'selected' : ''}>NEC</option>
+                                        <option ${c.type === 'NTC' ? 'selected' : ''}>NTC</option>
                                         <option ${c.type === 'IC' ? 'selected' : ''}>IC</option>
                                         <option ${c.type === 'Crossover' ? 'selected' : ''}>Crossover</option>
                                     </select>
@@ -2826,6 +2862,9 @@
             const activeClient = state.clients[state.activeClientId];
             const allAssays = Object.values((activeClient && activeClient.assays) || {});
 
+            // Shared control role type mapping (used by Control Labels + Roles sheets)
+            const roleTypeMap = {PC: 'PC', NC: 'NC', NEC: 'NC', NTC: 'NC', IC: 'IC', Crossover: 'Sample', Ignore: 'Ignore'};
+
             // 1. Alerts
             headerOnly('Alerts', ['ALERT', 'OUTCOME MESSAGE', 'MIXES', 'THERMOCYCLERS', 'WELL TYPE', 'THRESHOLD TYPE', 'THRESHOLD VALUE', 'FREQUENCY INTERVAL', 'SCHEDULE AT', 'INFORMS', 'ENABLED', 'SYSTEM ERROR CODE', 'SYSTEM LIMS STATUS']);
 
@@ -2848,7 +2887,7 @@
             });
             addSheet('Control Labels',
                 ['ROLE', 'ROLE TYPE', 'MIX', 'IS EXTRACTED', 'BACKUP MIXES', 'LABELS IN IMPORTED RUNFILE'],
-                Object.values(ctrlLabelMap).map(e => [e.name, e.type, e.mixes.join(' | '), 'Y', '', e.runfileLabel])
+                Object.values(ctrlLabelMap).map(e => [e.name, roleTypeMap[e.type] || e.type, e.mixes.join(' | '), 'Y', '', e.runfileLabel])
             );
 
             // 5. Cross Contamination Limits
@@ -2901,19 +2940,25 @@
             // 16. QIR - Quantification settings (one row per target for quant assays)
             const qirRows = [];
             allAssays.filter(a => a.general.assayMode === 'quant').forEach(a => {
+                const curves = (a.general.standardCurves && a.general.standardCurves.length > 0)
+                    ? a.general.standardCurves
+                    : [{ instrument: '', slope: a.general.slope ?? '', intercept: a.general.intercept ?? '', r2: a.general.r2 ?? '' }];
                 Object.values(a.targets || {}).forEach(t => {
-                    qirRows.push([
-                        t.name,
-                        a.general.slope !== undefined ? a.general.slope : '',
-                        a.general.intercept !== undefined ? a.general.intercept : '',
-                        '', '', '', '',
-                        a.general.r2 !== undefined ? a.general.r2 : '',
-                        ''
-                    ]);
+                    curves.forEach(c => {
+                        qirRows.push([
+                            t.name,
+                            c.instrument || '',
+                            c.slope !== undefined ? c.slope : '',
+                            c.intercept !== undefined ? c.intercept : '',
+                            '', '', '',
+                            c.r2 !== undefined ? c.r2 : '',
+                            ''
+                        ]);
+                    });
                 });
             });
             addSheet('QIR -  Quantification settings',
-                ['TARGET', 'SLOPE', 'INTERCEPT', 'MIN SLOPE', 'MAX SLOPE', 'MIN EFFICIENCY', 'MAX EFFICIENCY', 'MIN R2', 'MIN CONTROLS'],
+                ['TARGET', 'INSTRUMENT', 'SLOPE', 'INTERCEPT', 'MIN SLOPE', 'MAX SLOPE', 'MIN EFFICIENCY', 'MAX EFFICIENCY', 'MIN R2', 'MIN CONTROLS'],
                 qirRows
             );
 
@@ -2982,13 +3027,18 @@
             // 23. Dyes
             headerOnly('Dyes', ['DYE NAME', 'QUENCHER', 'COLOUR']);
 
-            // 24. Roles
-            const roleTypeMap = {PC: 'PC', NC: 'NC', IC: 'IC', Crossover: 'Sample', Ignore: 'Ignore'};
-            const roleSet = new Set();
-            allAssays.forEach(a => Object.values(a.controls || {}).forEach(c => roleSet.add(c.type)));
+            // 24. Roles — one row per unique control identifier across all assays
+            const roleMap = {}; // runfileLabel -> raw type
+            allAssays.forEach(a =>
+                Object.values(a.lots || {}).forEach(lot =>
+                    Object.values(lot.controls || {}).forEach(c => {
+                        if (c.runfileLabel) roleMap[c.runfileLabel] = c.type;
+                    })
+                )
+            );
             addSheet('Roles',
                 ['ROLE NAME', 'ROLE TYPE', 'HAS EXTRACTION', 'EXCLUDE FROM IC DELTA CHECK'],
-                [...roleSet].map(r => [r, roleTypeMap[r] || r, true, 'No'])
+                Object.entries(roleMap).map(([name, type]) => [name, roleTypeMap[type] || type, true, 'No'])
             );
 
             // 25. Rules
@@ -3076,18 +3126,25 @@
                     // Pass 2: QIR
                     const qirData = getSheetData('QIR -  Quantification settings');
                     if (qirData) {
-                        const appliedAssays = new Set();
                         qirData.forEach(row => {
                             const targetCode = String(row['TARGET'] || '').trim();
                             const assay = targetByCode[targetCode];
-                            if (!assay || appliedAssays.has(assay.id)) return;
-                            appliedAssays.add(assay.id);
+                            if (!assay) return;
+                            if (!assay.general.standardCurves) assay.general.standardCurves = [];
+                            const instrument = String(row['INSTRUMENT'] || '').trim();
                             const slope = parseFloat(row['SLOPE']);
                             const intercept = parseFloat(row['INTERCEPT']);
                             const r2 = parseFloat(row['MIN R2']);
-                            if (!isNaN(slope)) assay.general.slope = slope;
-                            if (!isNaN(intercept)) assay.general.intercept = intercept;
-                            if (!isNaN(r2)) assay.general.r2 = r2;
+                            if (!isNaN(slope) || !isNaN(intercept) || !isNaN(r2)) {
+                                if (!assay.general.standardCurves.some(c => c.instrument === instrument)) {
+                                    assay.general.standardCurves.push({
+                                        instrument,
+                                        slope: isNaN(slope) ? '' : slope,
+                                        intercept: isNaN(intercept) ? '' : intercept,
+                                        r2: isNaN(r2) ? '' : r2
+                                    });
+                                }
+                            }
                         });
                     }
 
@@ -3458,9 +3515,9 @@
                             <div class="grid grid-cols-2 gap-4 text-xs">
                                 <div><span class="text-slate-500 block mb-1 text-[10px] uppercase font-bold tracking-wider">Calculation Mode</span><span class="font-bold text-slate-700">${g.quantMode === 'stored' ? 'Stored Formula' : 'Per-Plate Curve'}</span></div>
                                 ${g.quantMode === 'stored' ? `
-                                    <div><span class="text-slate-500 block mb-1 text-[10px] uppercase font-bold tracking-wider">Slope</span><span class="font-bold text-slate-700 font-mono">${g.slope}</span></div>
-                                    <div><span class="text-slate-500 block mb-1 text-[10px] uppercase font-bold tracking-wider">Intercept</span><span class="font-bold text-slate-700 font-mono">${g.intercept}</span></div>
-                                    <div><span class="text-slate-500 block mb-1 text-[10px] uppercase font-bold tracking-wider">Min R²</span><span class="font-bold text-slate-700 font-mono">${g.r2}</span></div>
+                                    ${(g.standardCurves || []).map(c => `
+                                    <div class="col-span-2"><span class="text-slate-500 block mb-1 text-[10px] uppercase font-bold tracking-wider">${c.instrument ? c.instrument : 'Standard'} Curve</span><span class="font-bold text-slate-700 font-mono text-xs">Slope: ${c.slope} &nbsp; Intercept: ${c.intercept} &nbsp; Min R²: ${c.r2}</span></div>
+                                    `).join('')}
                                 ` : ''}
                                 <div><span class="text-slate-500 block mb-1 text-[10px] uppercase font-bold tracking-wider">Result Units</span><span class="font-bold text-slate-700">${g.units || 'copies/mL'}</span></div>
                                 <div><span class="text-slate-500 block mb-1 text-[10px] uppercase font-bold tracking-wider">Rounding</span><span class="font-bold text-slate-700">${g.rounding !== 'none' ? g.rounding : 'None'}</span></div>
