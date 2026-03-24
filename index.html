@@ -542,6 +542,35 @@
                             class="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg shadow-md hover:bg-slate-900 transition-all">+
                             New Rule</button>
                     </div>
+                    <!-- Canned / Programmatic Rules Library -->
+                    <details id="canned-rules-panel" class="glass-panel rounded-xl">
+                        <summary class="cursor-pointer px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors rounded-xl select-none">
+                            <div class="flex items-center gap-3">
+                                <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h10"/></svg>
+                                <span class="text-sm font-bold text-slate-700">Programmatic Rule Library</span>
+                                <span class="text-[10px] font-semibold text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">33 rules</span>
+                            </div>
+                            <svg class="w-4 h-4 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                        </summary>
+                        <div class="px-5 pb-5 pt-2">
+                            <p class="text-xs text-slate-400 mb-3">Enable or disable built-in programmatic rules for this assay. These apply in addition to any custom outcome rules below.</p>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-xs">
+                                    <thead>
+                                        <tr class="border-b border-slate-100">
+                                            <th class="w-8 pb-2"></th>
+                                            <th class="text-left pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider pr-4">Code</th>
+                                            <th class="text-left pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider pr-4">Title</th>
+                                            <th class="text-left pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="canned-rules-tbody" class="divide-y divide-slate-50">
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </details>
+
                     <div id="rules-list" class="space-y-4">
                         <!-- Rules -->
                     </div>
@@ -1777,7 +1806,7 @@
 
             if (tab === 'targets') renderTargets();
             if (tab === 'controls') renderControls();
-            if (tab === 'rules') renderRules();
+            if (tab === 'rules') { renderCannedRules(); renderRules(); }
             if (tab === 'test') renderRuleSimulator();
             if (tab === 'summary') renderSummary();
         }
@@ -2323,6 +2352,79 @@
         }
 
         // --- Rules & Builder ---
+
+        const CANNED_RULES = [
+            {code:'ADJ',                       title:'Adjacent CT rule',                                      desc:'IF target has a Ct<x and an adjacent Patient well has target with a Ct<y THEN flag the well'},
+            {code:'BICQUAL',                   title:'Negative extraction control has inhibition',             desc:'Is there inhibition in the NEC? Ie is the IC channel positive in the NEC with ct<35'},
+            {code:'BNC',                       title:'Negative controls are valid',                           desc:'Is the negative control (NEC and NEG) valid?'},
+            {code:'BPEC',                      title:'Control is valid',                                      desc:'Is the PEC control valid'},
+            {code:'COMBINED_OUTCOME',          title:'Set outcome based on observation outcomes',             desc:'Set outcomes to well based on outcomes of observations'},
+            {code:'INH',                       title:'Inhibition',                                            desc:'Is the IC in the range of the NEC IC'},
+            {code:'QSSC',                      title:'Quantify using stored standard curve',                  desc:'To quantify a well using stored standard curve properties from database.'},
+            {code:'THRESHOLD',                 title:'Check if correct threshold used',                       desc:'Check if correct threshold used'},
+            {code:'WDCLS',                     title:'Discrepant Patient CLS',                                desc:'To determine if a patient well has a discrepancy between the pcr.ai classification and the machine classification'},
+            {code:'WDCLSC',                    title:'Discrepant control classification',                     desc:'To determine if a control well has a discrepancy between the pcr.ai classification and the machine classification'},
+            {code:'WDCT',                      title:'Discrepant ct classification for patients',             desc:'To determine if a patient well has a large discrepancy between the pcr.ai ct and the machine ct'},
+            {code:'WFINALCLS',                 title:'Set final CLS based on cutoffs',                        desc:'If quantity is lower than Limit of Detection set cls to neg'},
+            {code:'WG7T',                      title:'Westgard 7T rule',                                     desc:'Is this control in error mode based on the Westgard 7T'},
+            {code:'WG13S',                     title:'Westgard 1:3S rule',                                   desc:'Is the control quant or ct within 3 Sd of the mean'},
+            {code:'WG14S',                     title:'Westgard 1:4S rule',                                   desc:'Is the control quant or ct within 4 Sd of the mean'},
+            {code:'WGInError',                 title:'Westgard in error',                                    desc:'Is this control in error mode based on the Westgard rules'},
+            {code:'ICCT',                      title:'Assigning Ct to IC',                                   desc:'Assign IC initial_Ct to final_ct'},
+            {code:'WG22S',                     title:'Westgard 22s rule',                                    desc:'Is this control in error mode based on the Westgard 22s'},
+            {code:'WG12S',                     title:'Westgard 1:2S rule',                                   desc:'Is the control 2s from the mean?'},
+            {code:'WT',                        title:'Associate mix and extraction errors',                   desc:'Check if the mix or extraction in the well has a failed control'},
+            {code:'RRESOLUTION',               title:'Set result based on resolution',                       desc:'Use resolution codes to determine the LIMS export'},
+            {code:'LIMS_EXPORT',               title:'Quest Lims Export',                                    desc:'Lims export'},
+            {code:'RWAC',                      title:'Set LIMS export based on associated well results',      desc:'Runs on patient observations to see if associated controls have errors, resolution codes or neither'},
+            {code:'INCONCLUSIVE',              title:'Generate an error if a sample is inconclusive',         desc:'Generate an error if a sample is inconclusive'},
+            {code:'DELTA_CT',                  title:'Check CT value differences with non IC targets in a well', desc:'Check CT value differences with non IC targets in a well'},
+            {code:'MINEXTRACT',                title:'Check patient has minimum required extraction controls', desc:'Verify patient has associated extraction controls'},
+            {code:'MIN_FLUORESCENCE',          title:'Check Fl within expected range',                       desc:'Check Fl within expected range'},
+            {code:'POSITIVE_SIGMOID_CONTROL',  title:'Incorrect sigmoid control in positive target',         desc:'Checking the downward sigmoid in controls in positive target'},
+            {code:'POSITIVE_SIGMOID',          title:'Incorrect sigmoid in positive target',                  desc:'Checking the downward sigmoid in positive target'},
+            {code:'UNEXPECTED_FL',             title:'Check max Fl within expected range',                   desc:'Check max Fl within expected range'},
+            {code:'WDCLSC_INVERT_SIGMOID_POS', title:'Discrepant Control Sigmoid',                           desc:'Check control well sigmoid direction and classification discrepancy'},
+            {code:'WDCLS_INVERT_SIGMOID_POS',  title:'Discrepant Patient Sigmoid',                           desc:'Check patient well sigmoid direction and classification discrepancy'},
+            {code:'COMBINED_OUTCOME_CONTROL',  title:'Set control outcome based on observation outcomes',    desc:'Set outcomes to control well based on outcomes of observations'},
+        ];
+
+        function renderCannedRules() {
+            const assay = state.assays[activeAssayId];
+            if (!assay) return;
+            if (!assay.cannedRules) {
+                // Default: all enabled
+                assay.cannedRules = {};
+                CANNED_RULES.forEach(r => assay.cannedRules[r.code] = true);
+            }
+            const tbody = document.getElementById('canned-rules-tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            CANNED_RULES.forEach(rule => {
+                const checked = assay.cannedRules[rule.code] !== false;
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-2 pr-2">
+                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleCannedRule('${rule.code}', this.checked)"
+                            class="w-4 h-4 rounded accent-brand-blue cursor-pointer">
+                    </td>
+                    <td class="py-2 pr-4 font-mono font-semibold text-slate-700 whitespace-nowrap">${rule.code}</td>
+                    <td class="py-2 pr-4 text-slate-600 whitespace-nowrap">${rule.title}</td>
+                    <td class="py-2 text-slate-400 leading-relaxed">${rule.desc}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function toggleCannedRule(code, enabled) {
+            const assay = state.assays[activeAssayId];
+            if (!assay) return;
+            if (!assay.cannedRules) assay.cannedRules = {};
+            assay.cannedRules[code] = enabled;
+            saveState();
+        }
+
         function renderRules() {
             const container = document.getElementById('rules-list');
             container.innerHTML = '';
@@ -2699,7 +2801,19 @@
             );
 
             // 18. Rules Mapping
-            headerOnly('Rules Mapping', ['RUN ORDER', 'RULE', 'TYPE', 'RULE DESCRIPTION', 'RULE ID', 'SPECIMEN NAME', 'ROLE', 'MIX', 'TARGET', 'DYE']);
+            const rmRows = [];
+            allAssays.forEach(a => {
+                let order = 1;
+                CANNED_RULES.forEach(r => {
+                    if ((a.cannedRules || {})[r.code]) {
+                        rmRows.push([order++, r.title, 'General', r.desc, r.code, '', '', a.name, '', '']);
+                    }
+                });
+            });
+            addSheet('Rules Mapping',
+                ['RUN ORDER', 'RULE', 'TYPE', 'RULE DESCRIPTION', 'RULE ID', 'SPECIMEN NAME', 'ROLE', 'MIX', 'TARGET', 'DYE'],
+                rmRows
+            );
 
             // 19. Tags
             headerOnly('Tags', ['NAME', 'ARCHIVE']);
@@ -2941,6 +3055,27 @@
                                 if (!Array.isArray(assay.general.sampleType)) assay.general.sampleType = [];
                                 if (!assay.general.sampleType.includes(specimenType)) assay.general.sampleType.push(specimenType);
                             }
+                        });
+                    }
+
+                    // Pass 7: Rules Mapping → cannedRules
+                    const rulesMappingData = getSheetData('Rules Mapping');
+                    if (rulesMappingData) {
+                        const mixRuleCodes = {};
+                        rulesMappingData.forEach(row => {
+                            const mix = String(row['MIX'] || '').trim();
+                            const code = String(row['RULE ID'] || '').trim();
+                            if (!mix || !code) return;
+                            if (!mixRuleCodes[mix]) mixRuleCodes[mix] = new Set();
+                            mixRuleCodes[mix].add(code);
+                        });
+                        Object.entries(mixRuleCodes).forEach(([mix, codes]) => {
+                            const assay = assayByMix[mix];
+                            if (!assay) return;
+                            assay.cannedRules = {};
+                            CANNED_RULES.forEach(r => {
+                                assay.cannedRules[r.code] = codes.has(r.code);
+                            });
                         });
                     }
 
