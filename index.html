@@ -1523,15 +1523,16 @@
                 await ensureFirebaseReady();
                 if (!firebaseAuthInstance) {
                     showLoginScreen('Firebase is not fully configured. Check firebase-web-config.js.');
+                    if (btn) btn.disabled = false;
                     return;
                 }
                 const provider = new firebase.auth.GoogleAuthProvider();
-                await firebaseAuthInstance.signInWithPopup(provider);
-                // onAuthStateChanged handles the rest
+                // Use redirect (not popup) to avoid popup-blocker issues
+                await firebaseAuthInstance.signInWithRedirect(provider);
+                // Page will reload; onAuthStateChanged handles the rest on return
             } catch (err) {
                 console.error('Google sign-in failed.', err);
                 showLoginScreen(`Sign-in failed: ${err.message}`);
-            } finally {
                 if (btn) btn.disabled = false;
             }
         }
@@ -1543,16 +1544,16 @@
                 await ensureFirebaseReady();
                 if (!firebaseAuthInstance) {
                     showLoginScreen('Firebase is not fully configured. Check firebase-web-config.js.');
+                    if (btn) btn.disabled = false;
                     return;
                 }
                 const provider = new firebase.auth.OAuthProvider('microsoft.com');
                 provider.setCustomParameters({prompt: 'select_account'});
-                await firebaseAuthInstance.signInWithPopup(provider);
-                // onAuthStateChanged handles the rest
+                await firebaseAuthInstance.signInWithRedirect(provider);
+                // Page will reload; onAuthStateChanged handles the rest on return
             } catch (err) {
                 console.error('Microsoft sign-in failed.', err);
                 showLoginScreen(`Sign-in failed: ${err.message}`);
-            } finally {
                 if (btn) btn.disabled = false;
             }
         }
