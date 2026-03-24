@@ -762,14 +762,17 @@
                     </div>
                 </div>
                 <div>
-                    <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center justify-between mb-2">
                         <label class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Assays Found</label>
                         <div class="flex gap-3">
                             <button onclick="toggleAllImportAssays(true)" class="text-[10px] font-bold text-brand-blue hover:underline">Select All</button>
                             <button onclick="toggleAllImportAssays(false)" class="text-[10px] font-bold text-slate-400 hover:underline">Deselect All</button>
                         </div>
                     </div>
-                    <div id="import-assay-checklist" class="space-y-2">
+                    <input type="search" id="import-assay-search" oninput="filterImportAssays(this.value)"
+                        class="w-full mb-3 bg-slate-50/50 border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        placeholder="Search assays…">
+                    <div id="import-assay-checklist" class="space-y-1">
                         <!-- Populated by renderImportModal() -->
                     </div>
                 </div>
@@ -2329,14 +2332,14 @@
                 const panel = document.createElement('details');
                 panel.className = "glass-panel rounded-xl group";
                 panel.open = true;
-                
+
                 const summary = document.createElement('summary');
                 summary.className = "cursor-pointer p-4 flex justify-between items-center hover:bg-slate-50 transition-colors";
                 summary.innerHTML = `
                     <div class="flex items-center gap-4 flex-1">
                         <div class="w-8 h-8 rounded-lg bg-slate-800 text-white flex items-center justify-center text-xs font-bold">${idx + 1}</div>
                         <div class="min-w-0 flex-1">
-                            <div class="text-sm font-bold text-slate-800">${rule.outcome}</div>
+                            <div class="text-sm font-bold text-slate-800">${rule.outcome || '<em class="text-slate-400 font-normal">Untitled Rule</em>'}</div>
                             <div class="text-[10px] text-slate-500 font-mono mt-0.5 truncate">${rule.expressionStr}</div>
                         </div>
                     </div>
@@ -2344,7 +2347,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                     </svg>
                 `;
-                
+
                 const content = document.createElement('div');
                 content.className = "px-4 pb-4 pt-2 border-t border-slate-100 space-y-4";
                 content.innerHTML = `
@@ -2355,38 +2358,37 @@
                             placeholder="e.g. POSITIVE">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Conditions</label>
-                        <div id="conditions-${idx}" class="space-y-2">
-                            <!-- Condition rows -->
-                        </div>
-                        <button type="button" onclick="addConditionRow(${idx})" class="mt-2 text-[11px] font-bold text-brand-blue hover:underline">
-                            + ADD CONDITION
-                        </button>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">IF &#8212; Conditions</label>
+                        <div id="conditions-${idx}" class="space-y-2"></div>
+                        <button type="button" onclick="addConditionRow(${idx})" class="mt-2 text-[11px] font-bold text-brand-blue hover:underline">+ ADD CONDITION</button>
+                    </div>
+                    <div class="border-t border-slate-100 pt-4">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">THEN &#8212; Actions</label>
+                        <div id="actions-${idx}" class="space-y-2"></div>
+                        <button type="button" onclick="addActionRow(${idx})" class="mt-2 text-[11px] font-bold text-brand-blue hover:underline">+ ADD ACTION</button>
                     </div>
                     <div class="flex gap-2 pt-4 border-t border-slate-100">
-                        <button type="button" onclick="saveRuleInline(${idx})" class="flex-1 px-4 py-2 bg-brand-blue text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-all">
-                            Save Rule
-                        </button>
-                        <button type="button" onclick="deleteRule(${idx})" class="px-4 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">
-                            Delete
-                        </button>
+                        <button type="button" onclick="saveRuleInline(${idx})" class="flex-1 px-4 py-2 bg-brand-blue text-white text-xs font-bold rounded-lg hover:bg-blue-600 transition-all">Save Rule</button>
+                        <button type="button" onclick="deleteRule(${idx})" class="px-4 py-2 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-all">Delete</button>
                     </div>
                 `;
-                
+
                 panel.appendChild(summary);
                 panel.appendChild(content);
                 container.appendChild(panel);
-                
+
                 // Render condition rows
                 const condContainer = content.querySelector(`#conditions-${idx}`);
                 rule.conditions.forEach((cond, condIdx) => {
                     renderConditionRow(condContainer, idx, condIdx, cond, rule.operator);
                 });
-                
-                // If no conditions, add one empty row
-                if (rule.conditions.length === 0) {
-                    addConditionRow(idx);
-                }
+                if (rule.conditions.length === 0) addConditionRow(idx);
+
+                // Render action rows
+                const actionContainer = content.querySelector(`#actions-${idx}`);
+                (rule.actions || []).forEach((action, actionIdx) => {
+                    renderActionRow(actionContainer, idx, actionIdx, action);
+                });
             });
         }
 
@@ -2394,15 +2396,19 @@
             const row = document.createElement('div');
             row.className = "flex items-center gap-2 group";
             row.id = `cond-row-${ruleIdx}-${condIdx}`;
-            
+
             const targets = Object.values(state.assays[activeAssayId].targets || {});
             const isFirst = condIdx === 0;
-            
+
+            const operatorCell = isFirst
+                ? `<span class="w-16 shrink-0 text-center text-[10px] font-bold text-slate-400 uppercase">IF</span>`
+                : `<select class="w-16 shrink-0 bg-slate-50/50 border border-slate-200 rounded-md px-2 py-1.5 text-[10px] font-bold uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm operator-select">
+                       <option value="AND" ${operator === 'AND' ? 'selected' : ''}>AND</option>
+                       <option value="OR" ${operator === 'OR' ? 'selected' : ''}>OR</option>
+                   </select>`;
+
             row.innerHTML = `
-                <select class="w-16 bg-slate-50/50 border border-slate-200 rounded-md px-2 py-1.5 text-[10px] font-bold uppercase focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm operator-select" ${isFirst ? 'disabled' : ''}>
-                    <option value="AND" ${operator === 'AND' ? 'selected' : ''}>AND</option>
-                    <option value="OR" ${operator === 'OR' ? 'selected' : ''}>OR</option>
-                </select>
+                ${operatorCell}
                 <select class="flex-1 bg-slate-50/50 border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm target-select">
                     <option value="">Select Target...</option>
                     ${targets.map(t => `<option value="${t.name}" ${condData.target === t.name ? 'selected' : ''}>${t.name}</option>`).join('')}
@@ -2411,11 +2417,11 @@
                     <option value="==" ${condData.op === '==' ? 'selected' : ''}>IS</option>
                     <option value="!=" ${condData.op === '!=' ? 'selected' : ''}>IS NOT</option>
                 </select>
-                <select class="w-24 bg-slate-50/50 border border-slate-200 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm val-select">
-                    <option value="POS" ${condData.val === 'POS' ? 'selected' : ''}>POS</option>
-                    <option value="NEG" ${condData.val === 'NEG' ? 'selected' : ''}>NEG</option>
-                    <option value="ND" ${condData.val === 'ND' ? 'selected' : ''}>ND</option>
-                    <option value="INV" ${condData.val === 'INV' ? 'selected' : ''}>INVALID</option>
+                <select class="w-32 bg-slate-50/50 border border-slate-200 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm val-select">
+                    <option value="POS"   ${condData.val === 'POS'   ? 'selected' : ''}>POS</option>
+                    <option value="NEG"   ${(condData.val === 'NEG' || condData.val === 'ND') ? 'selected' : ''}>NEG / ND</option>
+                    <option value="INCON" ${condData.val === 'INCON' ? 'selected' : ''}>INCONCLUSIVE</option>
+                    <option value="INV"   ${condData.val === 'INV'   ? 'selected' : ''}>INVALID</option>
                 </select>
                 <button type="button" onclick="document.getElementById('cond-row-${ruleIdx}-${condIdx}').remove()" class="p-1.5 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2432,55 +2438,105 @@
             renderConditionRow(container, ruleIdx, nextIdx, {target: '', op: '==', val: 'POS'}, 'AND');
         }
 
-        function saveRuleInline(ruleIdx) {
-            const outcome = document.getElementById(`rule-out-${ruleIdx}`).value;
-            if (!outcome) return alert("Outcome name required");
+        function renderActionExtraHTML(type, data) {
+            const targets = Object.values(state.assays[activeAssayId].targets || {});
+            const sel = `bg-slate-50/50 border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm`;
+            if (type === 'set_target') {
+                const opts = targets.map(t => `<option value="${t.name}" ${data.target === t.name ? 'selected' : ''}>${t.name}</option>`).join('');
+                return `<select class="flex-1 ${sel} action-target-select"><option value="">Select target…</option>${opts}</select>
+                        <span class="text-xs text-slate-400 shrink-0">→</span>
+                        <input type="text" class="flex-1 ${sel} action-outcome-input" value="${data.value || ''}" placeholder="e.g. POSITIVE">`;
+            } else if (type === 'warn' || type === 'error') {
+                return `<input type="text" class="flex-1 ${sel} action-message-input" value="${data.message || ''}" placeholder="${type === 'warn' ? 'Warning message…' : 'Error message…'}">`;
+            }
+            return ''; // fail_repeat — no extra fields
+        }
 
+        function renderActionRow(container, ruleIdx, actionIdx, actionData = {}) {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-2 group';
+            row.id = `action-row-${ruleIdx}-${actionIdx}`;
+            const type = actionData.type || 'set_target';
+            const sel = `bg-slate-50/50 border border-slate-200 rounded-md px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-white hover:border-slate-300 shadow-sm`;
+            row.innerHTML = `
+                <select class="w-44 shrink-0 ${sel} action-type-select" onchange="updateActionRowType(this, ${ruleIdx}, ${actionIdx})">
+                    <option value="set_target"    ${type === 'set_target'   ? 'selected' : ''}>Set target outcome</option>
+                    <option value="warn"          ${type === 'warn'         ? 'selected' : ''}>Show warning</option>
+                    <option value="error"         ${type === 'error'        ? 'selected' : ''}>Show error</option>
+                    <option value="fail_repeat"   ${type === 'fail_repeat'  ? 'selected' : ''}>Fail run &amp; repeat all</option>
+                </select>
+                <div class="action-extra flex-1 flex items-center gap-2">${renderActionExtraHTML(type, actionData)}</div>
+                <button type="button" onclick="document.getElementById('action-row-${ruleIdx}-${actionIdx}').remove()" class="p-1.5 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>`;
+            container.appendChild(row);
+        }
+
+        function updateActionRowType(select, ruleIdx, actionIdx) {
+            const row = document.getElementById(`action-row-${ruleIdx}-${actionIdx}`);
+            if (!row) return;
+            row.querySelector('.action-extra').innerHTML = renderActionExtraHTML(select.value, {});
+        }
+
+        function addActionRow(ruleIdx) {
+            const container = document.getElementById(`actions-${ruleIdx}`);
+            const nextIdx = container.querySelectorAll('.group').length;
+            renderActionRow(container, ruleIdx, nextIdx, {type: 'set_target'});
+        }
+
+        function saveRuleInline(ruleIdx) {
+            const outcome = document.getElementById(`rule-out-${ruleIdx}`).value.trim();
+
+            // Collect conditions
             const condContainer = document.getElementById(`conditions-${ruleIdx}`);
-            const rows = condContainer.querySelectorAll('.group');
+            const condRows = condContainer.querySelectorAll('.group');
             const conditions = [];
             const exprArr = [];
-            let operators = [];
+            const operators = [];
 
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
+            for (let i = 0; i < condRows.length; i++) {
+                const row = condRows[i];
                 const operatorSelect = row.querySelector('.operator-select');
                 const targetSelect = row.querySelector('.target-select');
                 const opSelect = row.querySelector('.op-select');
                 const valSelect = row.querySelector('.val-select');
-                
                 const target = targetSelect.value;
                 const op = opSelect.value;
                 const val = valSelect.value;
-                
-                if (!target) {
-                    alert("All conditions must have a target selected");
-                    return;
-                }
-                
-                const condition = {target, op, val};
-                conditions.push(condition);
+                if (!target) { alert('All conditions must have a target selected'); return; }
+                conditions.push({target, op, val});
                 exprArr.push(`${target} ${op === '==' ? '=' : '!='} ${val}`);
-                
-                if (operatorSelect && !operatorSelect.disabled) {
-                    operators.push(operatorSelect.value);
-                }
+                if (operatorSelect) operators.push(operatorSelect.value);
             }
 
-            // Build expression string with operators
             let expressionStr = exprArr[0] || '';
-            for (let i = 0; i < operators.length; i++) {
-                expressionStr += ` ${operators[i]} ${exprArr[i + 1]}`;
-            }
+            for (let i = 0; i < operators.length; i++) expressionStr += ` ${operators[i]} ${exprArr[i + 1]}`;
 
-            const rule = {
+            // Collect actions
+            const actionContainer = document.getElementById(`actions-${ruleIdx}`);
+            const actionRows = actionContainer.querySelectorAll('.group');
+            const actions = [];
+            actionRows.forEach(row => {
+                const typeSelect = row.querySelector('.action-type-select');
+                if (!typeSelect) return;
+                const type = typeSelect.value;
+                const action = {type};
+                if (type === 'set_target') {
+                    action.target = (row.querySelector('.action-target-select') || {}).value || '';
+                    action.value  = (row.querySelector('.action-outcome-input')  || {}).value || '';
+                } else if (type === 'warn' || type === 'error') {
+                    action.message = (row.querySelector('.action-message-input') || {}).value || '';
+                }
+                actions.push(action);
+            });
+
+            state.assays[activeAssayId].rules[ruleIdx] = {
                 outcome,
                 conditions,
                 expressionStr,
-                operator: operators.length > 0 ? operators[0] : 'AND'
+                operator: operators.length > 0 ? operators[0] : 'AND',
+                actions
             };
-
-            state.assays[activeAssayId].rules[ruleIdx] = rule;
             saveState();
             renderRules();
         }
@@ -2504,10 +2560,11 @@
 
         function addRule() {
             const newRule = {
-                outcome: 'New Rule',
+                outcome: '',
                 conditions: [{target: '', op: '==', val: 'POS'}],
                 expressionStr: '',
-                operator: 'AND'
+                operator: 'AND',
+                actions: []
             };
             state.assays[activeAssayId].rules.push(newRule);
             saveState();
@@ -2976,13 +3033,15 @@
                 sel.appendChild(opt);
             }
 
-            // Populate assay checklist
+            // Populate assay checklist — sorted alphabetically
             const list = document.getElementById('import-assay-checklist');
             list.innerHTML = '';
-            Object.entries(pendingImport).forEach(([name, assay]) => {
+            const sortedEntries = Object.entries(pendingImport).sort(([a], [b]) => a.localeCompare(b));
+            sortedEntries.forEach(([name, assay]) => {
                 const targetCount = Object.keys(assay.targets || {}).length;
                 const row = document.createElement('label');
                 row.className = 'flex items-center gap-2 px-1 py-1 rounded hover:bg-slate-100 cursor-pointer text-sm';
+                row.dataset.name = name.toLowerCase();
                 row.innerHTML = `<input type="checkbox" class="import-assay-cb" value="${name}" checked>
                     <span class="flex-1 font-medium">${name}</span>
                     <span class="text-xs text-slate-400">${targetCount} target${targetCount !== 1 ? 's' : ''}</span>`;
@@ -2990,7 +3049,8 @@
             });
 
             document.getElementById('import-modal-subtitle').textContent = `${count} assay${count !== 1 ? 's' : ''} found — choose which to import and where to add them.`;
-            // Hide the new-client input row
+            // Reset search and hide new-client row
+            document.getElementById('import-assay-search').value = '';
             document.getElementById('new-client-input-row').classList.add('hidden');
         }
 
@@ -2999,7 +3059,16 @@
         }
 
         function toggleAllImportAssays(checked) {
-            document.querySelectorAll('#import-assay-checklist .import-assay-cb').forEach(cb => cb.checked = checked);
+            // Only toggle visible rows
+            document.querySelectorAll('#import-assay-checklist label:not(.hidden) .import-assay-cb').forEach(cb => cb.checked = checked);
+        }
+
+        function filterImportAssays(query) {
+            const q = query.toLowerCase().trim();
+            document.querySelectorAll('#import-assay-checklist label').forEach(row => {
+                const match = !q || row.dataset.name.includes(q);
+                row.classList.toggle('hidden', !match);
+            });
         }
 
         function confirmImport() {
