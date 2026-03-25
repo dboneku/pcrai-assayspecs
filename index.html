@@ -7,6 +7,7 @@
     <title>pcr.ai | Assay Configuration Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="firebase-web-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -132,6 +133,11 @@
         <div class="flex items-center gap-3">
             <button onclick="openFirebaseModal()"
                 class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10">Firebase</button>
+            <button onclick="openRunFileModal()"
+                class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                Run File
+            </button>
             <button onclick="exportJSON()"
                 class="px-4 py-2 text-sm font-medium bg-white/10 hover:bg-white/20 rounded-lg transition-all border border-white/10">JSON
                 Export</button>
@@ -952,6 +958,48 @@
                         class="px-8 py-2 text-sm font-bold bg-brand-blue text-white rounded-lg shadow-lg shadow-blue-500/30">Save
                         Firebase Settings</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Run File Viewer Modal -->
+        <div id="run-file-modal"
+            class="bg-white rounded-2xl shadow-2xl w-full max-w-[1400px] overflow-hidden hidden transform transition-all flex flex-col" style="max-height:92vh">
+            <div class="p-5 border-b border-slate-100 flex justify-between items-center shrink-0">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Run File Viewer</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">ABI 7500 / QuantStudio &mdash; .eds &amp; .sds files</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="run-file-status" class="text-xs text-red-500"></span>
+                    <button onclick="document.getElementById('run-file-input').click()" type="button"
+                        class="px-3 py-1.5 text-xs font-bold text-brand-blue border border-brand-blue/30 rounded-lg hover:bg-brand-blue/5 transition-all">Load File</button>
+                    <input type="file" id="run-file-input" accept=".eds,.sds" class="hidden" onchange="loadRunFile(event)">
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 p-1 hover:bg-slate-100 rounded-lg transition-all text-lg leading-none">&times;</button>
+                </div>
+            </div>
+
+            <!-- Drop zone -->
+            <div id="run-file-dropzone" class="flex flex-col items-center justify-center gap-4 p-16 m-6 border-2 border-dashed border-slate-200 rounded-xl text-slate-400 cursor-pointer hover:border-brand-blue/40 hover:bg-blue-50/30 transition-all"
+                onclick="document.getElementById('run-file-input').click()">
+                <svg class="w-12 h-12 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <div class="text-center">
+                    <p class="font-semibold text-slate-500">Click to open a run file</p>
+                    <p class="text-xs mt-1">QuantStudio .eds &nbsp;|&nbsp; ABI 7500 .sds</p>
+                </div>
+            </div>
+
+            <!-- Content (tabs + panels, shown after parse) -->
+            <div id="run-file-content" class="hidden flex-1 flex flex-col overflow-hidden">
+                <div class="flex gap-0 px-5 border-b border-slate-100 shrink-0">
+                    <button id="run-tab-info" onclick="switchRunTab('info')" class="px-4 py-2 text-xs font-bold text-brand-blue border-b-2 border-brand-blue transition-all">Run Info</button>
+                    <button id="run-tab-map"  onclick="switchRunTab('map')"  class="px-4 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600 transition-all">Plate Map</button>
+                    <button id="run-tab-data" onclick="switchRunTab('data')" class="px-4 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600 transition-all">Well Data</button>
+                    <button id="run-tab-files" onclick="switchRunTab('files')" class="px-4 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600 transition-all">Package Files</button>
+                </div>
+                <div id="run-panel-info"  class="p-5 overflow-y-auto flex-1"></div>
+                <div id="run-panel-map"   class="p-5 overflow-y-auto flex-1 hidden"></div>
+                <div id="run-panel-data"  class="p-5 overflow-y-auto flex-1 hidden"></div>
+                <div id="run-panel-files" class="p-5 overflow-y-auto flex-1 hidden"></div>
             </div>
         </div>
     </div>
@@ -2819,6 +2867,684 @@
             document.getElementById('modal-backdrop').classList.add('hidden');
             document.querySelectorAll('#modal-backdrop > div').forEach(modal => modal.classList.add('hidden'));
         }
+
+        // ─── Run File Viewer (ABI 7500 / QuantStudio .eds / .sds) ────────────────
+
+        function openRunFileModal() {
+            openModal('run-file-modal');
+        }
+
+        function switchRunTab(tab) {
+            ['info','map','data','files'].forEach(t => {
+                document.getElementById(`run-panel-${t}`).classList.toggle('hidden', t !== tab);
+                const btn = document.getElementById(`run-tab-${t}`);
+                if (t === tab) {
+                    btn.className = 'px-4 py-2 text-xs font-bold text-brand-blue border-b-2 border-brand-blue transition-all';
+                } else {
+                    btn.className = 'px-4 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600 transition-all';
+                }
+            });
+        }
+
+        async function loadRunFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = '';
+            const statusEl = document.getElementById('run-file-status');
+            statusEl.textContent = '';
+            try {
+                statusEl.textContent = 'Parsing…';
+                const buf = await file.arrayBuffer();
+                const parsed = await parseRunFile(buf, file.name);
+                renderRunFile(parsed, file.name);
+                statusEl.textContent = '';
+            } catch(e) {
+                statusEl.textContent = `Error: ${e.message}`;
+                console.error(e);
+            }
+        }
+
+        /**
+         * Parse an .eds (QuantStudio) or .sds (ABI 7500) file.
+         * Both formats are ZIP archives containing XML files.
+         *
+         * Typical structure (QuantStudio .eds):
+         *   apldbio/sds/run_information.xml — experiment metadata / header
+         *   apldbio/sds/plate_setup.xml     — sample names, targets, tasks per well
+         *   apldbio/sds/raw_data.xml / multicomponent_data.xml — raw fluorescence
+         *   apldbio/sds/results.xml         — Ct + outcome per well
+         *
+         * For .sds (7500) the same paths exist or are root-level.
+         * QuantStudio 5 Dx actual structure:
+         *   apldbio/sds/experiment.xml        — metadata, samples, detectors
+         *   apldbio/sds/analysis_protocol.xml — per-well analysis settings (WellIndex + ObjectName)
+         *   apldbio/sds/quant/*.quant         — raw camera fluorescence per cycle
+         */
+        async function parseRunFile(arrayBuffer, filename) {
+            if (!window.JSZip) throw new Error('JSZip library not loaded yet — please retry in a moment.');
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            const allFiles = Object.keys(zip.files).filter(n => !zip.files[n].dir);
+            const result = {
+                filename, allFiles, format: 'unknown',
+                header: {}, samples: [], detectors: [],
+                wellDetectors: {}, curves: {}, xmlSnippets: {},
+                wells: [], targets: []  // legacy compat
+            };
+
+            // Detect Aztec/QuantStudio 7 format (primary/analysis_result.json)
+            const aztecResult = allFiles.find(f => f === 'primary/analysis_result.json');
+            // Detect QuantStudio 5 Dx EDS format by experiment.xml under apldbio/
+            const expFile = allFiles.find(f => /experiment\.xml$/i.test(f) && f.includes('apldbio'));
+            if (aztecResult) {
+                result.format = 'aztec_eds';
+                await parseAztecEds(zip, allFiles, result);
+            } else if (expFile) {
+                result.format = 'qs_eds';
+                await parseQSEds(zip, allFiles, expFile, result);
+            } else {
+                result.format = 'legacy';
+                await parseLegacySDS(zip, allFiles, result);
+            }
+            return result;
+        }
+
+        async function parseQSEds(zip, allFiles, expFilePath, result) {
+            // ── 1. experiment.xml → Run Info, Samples, Detectors ───────────────
+            const expText = await zip.file(expFilePath).async('text');
+            result.xmlSnippets[expFilePath] = expText.slice(0, 3000);
+            const expDoc = new DOMParser().parseFromString(expText, 'application/xml');
+
+            const getT = (doc, tag) => { const el = doc.getElementsByTagName(tag)[0]; return el ? el.textContent.trim() : ''; };
+
+            const expName = getT(expDoc, 'Name');
+            if (expName) result.header['Experiment Name'] = expName;
+            const plateType = getT(expDoc, 'PlateTypeID');
+            if (plateType) result.header['Plate Type'] = plateType.replace('TYPE_', '').replace('X', '×');
+            const startMs = parseInt(getT(expDoc, 'RunStartTime'));
+            const endMs   = parseInt(getT(expDoc, 'RunEndTime'));
+            if (startMs > 0) result.header['Run Start'] = new Date(startMs).toLocaleString();
+            if (endMs   > 0) result.header['Run End']   = new Date(endMs).toLocaleString();
+            if (startMs > 0 && endMs > 0) result.header['Duration'] = Math.round((endMs - startMs) / 60000) + ' min';
+
+            // Instrument properties
+            Array.from(expDoc.getElementsByTagName('ExperimentProperty')).forEach(ep => {
+                if (ep.getAttribute('type') !== 'InstrumentInfo') return;
+                Array.from(ep.getElementsByTagName('PropertyValue')).forEach(pv => {
+                    const key = pv.getAttribute('key') || '';
+                    const strEl = pv.getElementsByTagName('String')[0];
+                    const val = strEl ? strEl.textContent.trim().replace(/\s+/g, ' ') : '';
+                    if (key === 'instrumentType'         && val) result.header['Instrument']    = val;
+                    if (key === 'instrumentSerialNumber' && val) result.header['Instrument S/N'] = val;
+                    if (key === 'blockSerialNumber'      && val) result.header['Block S/N']     = val;
+                });
+            });
+
+            // Samples list
+            Array.from(expDoc.getElementsByTagName('Sample')).forEach(s => {
+                const n = getT(s, 'Name'); if (n) result.samples.push(n);
+            });
+            if (result.samples.length) result.header['Sample Types'] = result.samples.join(', ');
+
+            // Detectors (order defines emission index: E1=detector[0], E2=detector[1], ...)
+            Array.from(expDoc.getElementsByTagName('Detector')).forEach(d => {
+                const name = getT(d, 'Name'), reporter = getT(d, 'Reporter'), quencher = getT(d, 'Quencher');
+                if (name) { result.detectors.push({ name, reporter, quencher }); result.targets.push(name); }
+            });
+            if (result.detectors.length) result.header['Targets'] = result.detectors.map(d => `${d.name} / ${d.reporter}`).join(', ');
+
+            // ── 2. analysis_protocol.xml → well-detector mapping ───────────────
+            const apFile = allFiles.find(f => /analysis_protocol\.xml$/i.test(f));
+            if (apFile) {
+                const apText = await zip.file(apFile).async('text');
+                result.xmlSnippets[apFile] = apText.slice(0, 2000);
+                const apDoc = new DOMParser().parseFromString(apText, 'application/xml');
+                Array.from(apDoc.getElementsByTagName('JaxbAnalysisSettings')).forEach(setting => {
+                    const typeEl = setting.getElementsByTagName('Type')[0];
+                    if (!typeEl || !typeEl.textContent.includes('IWellSettings')) return;
+                    let wellIndex = null, objectName = null;
+                    Array.from(setting.getElementsByTagName('JaxbSettingValue')).forEach(sv => {
+                        const nameEl = sv.getElementsByTagName('Name')[0];
+                        if (!nameEl) return;
+                        if (nameEl.textContent.trim() === 'WellIndex') {
+                            const iv = sv.getElementsByTagName('IntValue')[0];
+                            if (iv) wellIndex = parseInt(iv.textContent);
+                        } else if (nameEl.textContent.trim() === 'ObjectName') {
+                            const sv2 = sv.getElementsByTagName('StringValue')[0];
+                            if (sv2) objectName = sv2.textContent.trim();
+                        }
+                    });
+                    if (wellIndex === null || !objectName) return;
+                    // WellIndex 0=A1, 1=A2 … 11=A12, 12=B1 … 95=H12
+                    const row = String.fromCharCode(65 + Math.floor(wellIndex / 12));
+                    const col = (wellIndex % 12) + 1;
+                    const pos = `${row}${col}`;
+                    if (!result.wellDetectors[pos]) result.wellDetectors[pos] = [];
+                    if (!result.wellDetectors[pos].includes(objectName)) result.wellDetectors[pos].push(objectName);
+                    let we = result.wells.find(w => w.pos === pos);
+                    if (!we) { we = { pos, sample: '', task: '', targets: [], cts: [] }; result.wells.push(we); }
+                    if (!we.targets.find(t => t.target === objectName)) {
+                        const det = result.detectors.find(d => d.name === objectName);
+                        we.targets.push({ target: objectName, reporter: det ? det.reporter : '' });
+                    }
+                });
+                result.wells.sort((a, b) => a.pos < b.pos ? -1 : a.pos > b.pos ? 1 : 0);
+            }
+            result.header['Active Wells'] = Object.keys(result.wellDetectors).length + '';
+
+            // ── 3. analysis_result.txt → sample names + Ct values ───────────────
+            const resultFile = allFiles.find(f => /analysis_result\.txt$/i.test(f));
+            if (resultFile) {
+                const rtText = await zip.file(resultFile).async('text');
+                const rtLines = rtText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+                // Find header row (has 'Well', 'Sample Name', 'Detector', 'Ct')
+                let hdrIdx = -1;
+                let colWell = 0, colSample = 1, colDet = 2, colCt = 4;
+                for (let i = 0; i < Math.min(rtLines.length, 10); i++) {
+                    if (/Well.*Sample.*Detector.*Ct/i.test(rtLines[i])) {
+                        hdrIdx = i;
+                        const cols = rtLines[i].split('\t');
+                        colWell   = cols.findIndex(c => /^well$/i.test(c.trim()));
+                        colSample = cols.findIndex(c => /sample.name/i.test(c.trim()));
+                        colDet    = cols.findIndex(c => /^detector$/i.test(c.trim()));
+                        colCt     = cols.findIndex(c => /^ct$/i.test(c.trim()));
+                        if (colWell < 0) colWell = 0;
+                        if (colSample < 0) colSample = 1;
+                        if (colDet < 0) colDet = 2;
+                        if (colCt < 0) colCt = 4;
+                        break;
+                    }
+                }
+                for (let i = hdrIdx + 1; i < rtLines.length; i++) {
+                    const fields = rtLines[i].split('\t');
+                    const wellIdxStr = (fields[colWell] || '').trim();
+                    if (!/^\d+$/.test(wellIdxStr)) continue;
+                    const wellIdx  = parseInt(wellIdxStr);
+                    const sample   = (fields[colSample] || '').trim();
+                    const detector = (fields[colDet] || '').trim();
+                    const ctStr    = (fields[colCt] || '').trim();
+                    const ct       = ctStr ? parseFloat(ctStr) : NaN;
+                    const row = String.fromCharCode(65 + Math.floor(wellIdx / 12));
+                    const col = (wellIdx % 12) + 1;
+                    const pos = `${row}${col}`;
+                    let we = result.wells.find(w => w.pos === pos);
+                    if (!we) { we = { pos, sample: '', task: '', targets: [], cts: [] }; result.wells.push(we); }
+                    if (sample && !we.sample) we.sample = sample;
+                    if (detector && !isNaN(ct)) {
+                        const existing = we.cts.find(c => c.target === detector);
+                        if (!existing) we.cts.push({ target: detector, ct: ct.toString() });
+                    }
+                }
+                result.wells.sort((a, b) => a.pos < b.pos ? -1 : a.pos > b.pos ? 1 : 0);
+            }
+
+            // ── 4. Quant files → amplification curves (raw fluorescence) ────────
+            // Emission index (E1, E2, E3 in filename) maps to detector declaration order.
+            // Pick the highest-M_X file per (emission, cycle) — that corresponds to
+            // the extension-step read (when amplicons are fully formed).
+            const emToDetector = {};
+            result.detectors.forEach((d, i) => { emToDetector[`E${i + 1}`] = d.name; });
+
+            const quantFiles = allFiles.filter(f => f.endsWith('.quant'));
+            const emCycleFiles = {}; // { 'E1': { 1: 'path', 2: 'path', ... }, ... }
+            const qRe = /\/(S\d+)_(C(\d+))_(T\d+)_(P\d+)_(M\d+)_(X\d+)_(E[123])\.quant$/;
+            quantFiles.forEach(qf => {
+                const m = qf.match(qRe);
+                if (!m) return;
+                const cycle = parseInt(m[3]), em = m[8];
+                if (!emCycleFiles[em]) emCycleFiles[em] = {};
+                // Keep lexicographically last (highest M_X = latest measurement step)
+                if (!emCycleFiles[em][cycle] || qf > emCycleFiles[em][cycle]) emCycleFiles[em][cycle] = qf;
+            });
+
+            const ROWS96 = 'ABCDEFGH'.split('');
+            const allWells96 = ROWS96.flatMap(r => Array.from({ length: 12 }, (_, i) => `${r}${i + 1}`));
+
+            for (const [em, detName] of Object.entries(emToDetector)) {
+                if (!emCycleFiles[em]) continue;
+                allWells96.forEach(w => { result.curves[`${w}:${detName}`] = []; });
+                const cyclePairs = Object.entries(emCycleFiles[em])
+                    .map(([c, p]) => [parseInt(c), p]).sort((a, b) => a[0] - b[0]);
+                for (const [cycle, qPath] of cyclePairs) {
+                    const qText = await zip.file(qPath).async('text');
+                    const qStart = qText.indexOf('[quant]');
+                    if (qStart < 0) continue;
+                    const qLines = qText.slice(qStart + 7).split('\n');
+                    let dataStart = 0;
+                    for (let i = 0; i < qLines.length; i++) {
+                        if (qLines[i].startsWith('region')) { dataStart = i + 1; break; }
+                    }
+                    for (let i = dataStart; i < qLines.length; i++) {
+                        const line = qLines[i].trim();
+                        if (!line || line.startsWith('[')) break;
+                        const parts = line.split('\t');
+                        if (!parts[0] || !parts[0].startsWith('I')) continue; // inner area only
+                        const well = parts[0].slice(1); // strip leading 'I'
+                        const val = parseInt(parts[1]);
+                        const key = `${well}:${detName}`;
+                        if (result.curves[key]) result.curves[key].push({ cycle, value: val });
+                    }
+                }
+            }
+        }
+
+        // ── Parser: Aztec / QuantStudio 7 Series EDS (primary/analysis_result.json format) ──
+        async function parseAztecEds(zip, allFiles, result) {
+            const safeJson = (text) => JSON.parse(text.replace(/\b(NaN|Infinity|-Infinity)\b/g, 'null'));
+
+            // ── 1. Header from docProps/core.xml ───────────────────────────────
+            const coreFile = allFiles.find(f => f === 'docProps/core.xml');
+            if (coreFile) {
+                const coreText = await zip.file(coreFile).async('text');
+                result.xmlSnippets[coreFile] = coreText.slice(0, 2000);
+                const coreDoc = new DOMParser().parseFromString(coreText, 'application/xml');
+                const DC = 'http://purl.org/dc/elements/1.1/';
+                const DCTERMS = 'http://purl.org/dc/terms/';
+                const CP = 'http://schemas.openxmlformats.org/package/2006/metadata/core-properties';
+                const getNS = (ns, tag) => { const el = coreDoc.getElementsByTagNameNS(ns, tag)[0]; return el ? el.textContent.trim() : ''; };
+                const title = getNS(DC, 'title');
+                const creator = getNS(DC, 'creator');
+                const created = getNS(DCTERMS, 'created');
+                const category = getNS(CP, 'category');
+                const status = getNS(CP, 'contentStatus');
+                if (title)    result.header['Experiment Name'] = title;
+                if (creator)  result.header['Operator'] = creator;
+                if (created)  result.header['Run Date'] = new Date(created).toLocaleString();
+                if (category) result.header['Experiment Type'] = category;
+                if (status)   result.header['Status'] = status;
+            }
+
+            // ── 2. Instrument info from summary.json ───────────────────────────
+            const summaryFile = allFiles.find(f => f === 'summary.json');
+            if (summaryFile) {
+                const summary = safeJson(await zip.file(summaryFile).async('text'));
+                const instrType = (summary.instrumentType || '').replace(/_/g, ' ');
+                const blockType = (summary.blockType || '').replace(/BLOCK_/,'').replace(/_/g,' ');
+                const runStatus = summary.runStatus || '';
+                const regLabel  = summary.regulatoryLabel || '';
+                if (instrType) result.header['Instrument'] = instrType;
+                if (blockType) result.header['Block'] = blockType;
+                if (runStatus) result.header['Run Status'] = runStatus;
+                if (regLabel)  result.header['Regulatory Label'] = regLabel;
+                // summary.json timestamps are more accurate than docProps
+                if (summary.createdTime) result.header['Created'] = new Date(summary.createdTime).toLocaleString();
+            }
+
+            // ── 3. Run start/end times from run/run_summary.json ──────────────
+            const runSummaryFile = allFiles.find(f => f === 'run/run_summary.json');
+            if (runSummaryFile) {
+                const rs = safeJson(await zip.file(runSummaryFile).async('text'));
+                if (rs.startTime) result.header['Run Start'] = new Date(rs.startTime).toLocaleString();
+                if (rs.endTime)   result.header['Run End']   = new Date(rs.endTime).toLocaleString();
+                if (rs.startTime && rs.endTime)
+                    result.header['Duration'] = Math.round((rs.endTime - rs.startTime) / 60000) + ' min';
+                if (rs.instrumentId) {
+                    // Pretty-print e.g. "sds7500fast" → "ABI 7500 Fast"
+                    const idMap = { sds7500fast: 'ABI 7500 Fast', sds7500: 'ABI 7500', quantstudio5: 'QuantStudio 5' };
+                    const prettyId = idMap[rs.instrumentId.toLowerCase()] || rs.instrumentId;
+                    // Prefer the more specific name from summary.json but fall back here
+                    if (!result.header['Instrument']) result.header['Instrument'] = prettyId;
+                    else result.header['Instrument'] += ` (${prettyId})`;
+                }
+            }
+
+            // ── 4. Software / originator from docProps/custom.xml ─────────────
+            const custFile = allFiles.find(f => f === 'docProps/custom.xml');
+            if (custFile) {
+                const custText = await zip.file(custFile).async('text');
+                result.xmlSnippets[custFile] = custText.slice(0, 2000);
+                const custDoc = new DOMParser().parseFromString(custText, 'application/xml');
+                Array.from(custDoc.getElementsByTagName('property')).forEach(p => {
+                    const name = p.getAttribute('name');
+                    const lpwstr = p.getElementsByTagName('lpwstr')[0];
+                    const val = lpwstr ? lpwstr.textContent.trim() : '';
+                    if (name === 'Originator' && val) result.header['Software'] = val;
+                    if (name === 'Operator'   && val && !result.header['Operator']) result.header['Operator'] = val;
+                });
+            }
+
+            // ── 6. Targets from primary/analysis_setting.json ──────────────────
+            const settingFile = allFiles.find(f => f === 'primary/analysis_setting.json');
+            if (settingFile) {
+                const settingText = await zip.file(settingFile).async('text');
+                const setting = safeJson(settingText);
+                const tSettings = (setting.targetCtSettings || []).filter(t => t.targetName !== 'FALSE');
+                result.detectors = tSettings.map(t => ({ name: t.targetName, reporter: '', threshold: t.threshold }));
+            }
+
+            // ── 7. Wells + Ct + Curves from primary/analysis_result.json ────────
+            const arFile = allFiles.find(f => f === 'primary/analysis_result.json');
+            if (arFile) {
+                const arText = await zip.file(arFile).async('text');
+                result.xmlSnippets[arFile] = arText.slice(0, 3000);
+                const arData = safeJson(arText);
+                const wellResults = arData.wellResults || [];
+                const ROWS96 = 'ABCDEFGH';
+                wellResults.forEach(wr => {
+                    const wi = wr.wellIndex;
+                    const rowChar = ROWS96[Math.floor(wi / 12)];
+                    if (!rowChar) return;
+                    const col = (wi % 12) + 1;
+                    const pos = `${rowChar}${col}`;
+                    // Sample name: strip the trailing "\nASSAY" annotation instruments sometimes append
+                    const sample = (wr.sampleName || '').split('\n')[0].trim();
+                    const validReactions = (wr.reactionResults || []).filter(r => r.targetName !== 'FALSE');
+                    if (!validReactions.length) return;
+
+                    const targetsList = validReactions.map(r => r.targetName);
+                    result.wellDetectors[pos] = targetsList;
+
+                    // Ct values
+                    const cts = [];
+                    validReactions.forEach(r => {
+                        if (r.omitted) return;
+                        const amp = r.amplificationResult || {};
+                        const cq = amp.cq;
+                        // cq > 0 and AMP status = valid Ct; otherwise undetermined (show 40)
+                        const ctVal = (typeof cq === 'number' && cq > 0 && amp.ampStatus === 'AMP')
+                            ? cq.toFixed(2) : '40.0';
+                        cts.push({ target: r.targetName, ct: ctVal });
+
+                        // Fluorescence curve from rn array
+                        const rn = amp.rn || [];
+                        if (rn.length) {
+                            result.curves[`${pos}:${r.targetName}`] = rn.map((v, i) => ({ cycle: i + 1, value: v }));
+                        }
+                    });
+
+                    result.wells.push({ pos, sample, cts, targets: targetsList, task: '' });
+                });
+            }
+        }
+
+        async function parseLegacySDS(zip, allFiles, result) {
+            const findFile = (...frags) => {
+                for (const frag of frags) {
+                    const norm = frag.toLowerCase().replace(/[_\-\s]/g, '');
+                    const found = allFiles.find(n => n.toLowerCase().replace(/[_\-\s]/g, '').includes(norm));
+                    if (found) return found;
+                }
+                return null;
+            };
+            const getXml = async (path) => {
+                const text = await zip.file(path).async('text');
+                result.xmlSnippets[path] = text.slice(0, 3000);
+                return new DOMParser().parseFromString(text, 'application/xml');
+            };
+            const findEls = (parent, ...names) => {
+                const all = parent.getElementsByTagName ? [...parent.getElementsByTagName('*')] : [];
+                for (const name of names) {
+                    const lower = name.toLowerCase();
+                    const matched = all.filter(el => (el.localName || el.tagName).toLowerCase() === lower);
+                    if (matched.length) return matched;
+                }
+                return [];
+            };
+            const textOf = (parent, ...names) => findEls(parent, ...names)[0]?.textContent?.trim() || '';
+            const leafMap = (doc) => {
+                const map = {};
+                const walk = (el) => {
+                    const children = el.children ? [...el.children] : [];
+                    if (children.length === 0) {
+                        const v = el.textContent?.trim(), k = (el.localName || el.tagName || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (v && k && !map[k]) map[k] = { value: v, tagName: el.localName || el.tagName };
+                    } else { children.forEach(walk); }
+                };
+                if (doc.documentElement) walk(doc.documentElement);
+                return map;
+            };
+
+            const infoPath = findFile('run_information', 'runinformation', 'experiment_setup', 'experimentsetup', 'runinfo', 'runparameters');
+            if (infoPath) {
+                const doc = await getXml(infoPath);
+                const m = leafMap(doc);
+                const g = (...keys) => { for (const k of keys) { const n = k.toLowerCase().replace(/[^a-z0-9]/g,''); if (m[n]) return m[n].value; } return ''; };
+                [['Experiment Name','ExperimentName','Name','RunName'],['Instrument','InstrumentName','Instrument','InstrumentModel'],
+                 ['Instrument S/N','InstrumentSerial','InstrumentSerialNumber','Serial'],['Run Start','StartDateTime','RunStartTime','StartTime'],
+                 ['Run End','EndDateTime','RunEndTime'],['Operator','Operator','User'],['Plate Type','PlateType','ContainerType']
+                ].forEach(([label, ...keys]) => { const val = g(...keys); if (val) result.header[label] = val; });
+            }
+
+            const setupPath = findFile('plate_setup', 'platesetup', 'sample_setup', 'samplesetup');
+            let wellMap = {}, targetMap = {};
+            if (setupPath) {
+                const doc = await getXml(setupPath);
+                findEls(doc, 'Well', 'well').forEach(well => {
+                    const pos = textOf(well,'Position','position','WellPosition') || well.getAttribute('id') || well.getAttribute('position') || '';
+                    if (!pos) return;
+                    wellMap[pos] = { sample: textOf(well,'SampleName','Sample','SampleID'), task: textOf(well,'Task','WellType','Type') };
+                    findEls(well,'Target','target','Detector').forEach(t => {
+                        const tname = textOf(t,'TargetName','Name','DetectorName') || t.getAttribute('name') || '';
+                        const rep   = textOf(t,'Reporter','Dye');
+                        if (tname) { if (!targetMap[pos]) targetMap[pos] = []; targetMap[pos].push({target:tname,reporter:rep}); if (!result.targets.includes(tname)) result.targets.push(tname); }
+                    });
+                });
+            }
+
+            const resultsPath = findFile('results','analysis_result','analysisresult');
+            let ctMap = {};
+            if (resultsPath) {
+                const doc = await getXml(resultsPath);
+                findEls(doc,'Well','well').forEach(well => {
+                    const pos = textOf(well,'Position','position') || well.getAttribute('id') || '';
+                    if (!pos) return;
+                    ctMap[pos] = [];
+                    findEls(well,'Target','target','Detector').forEach(t => {
+                        const tname = textOf(t,'TargetName','Name','DetectorName') || '';
+                        ctMap[pos].push({ target: tname, ct: textOf(t,'Ct','CT','CqValue','CtValue'), call: textOf(t,'CtStatus','Call','Outcome') });
+                        if (tname && !result.targets.includes(tname)) result.targets.push(tname);
+                    });
+                });
+            }
+
+            const allPositions = new Set([...Object.keys(wellMap),...Object.keys(targetMap),...Object.keys(ctMap)]);
+            allPositions.forEach(pos => {
+                result.wells.push({ pos, ...(wellMap[pos]||{}), targets: targetMap[pos]||[], cts: ctMap[pos]||[] });
+            });
+            result.wells.sort((a, b) => a.pos.localeCompare(b.pos));
+        }
+
+        function renderRunFile(parsed, filename) {
+            document.getElementById('run-file-dropzone').classList.add('hidden');
+            const content = document.getElementById('run-file-content');
+            content.classList.remove('hidden');
+            content.classList.add('flex');
+            switchRunTab('info');
+
+            // ── Panel 1: Run Info ──────────────────────────────────────────────
+            const pInfo = document.getElementById('run-panel-info');
+            const headerEntries = Object.entries(parsed.header);
+            let infoHtml = headerEntries.length
+                ? `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">${headerEntries.map(([k,v]) =>
+                    `<div><span class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">${escH(k)}</span>
+                     <span class="text-sm font-semibold text-slate-800 break-all">${escH(v)}</span></div>`).join('')}</div>`
+                : `<p class="text-slate-400 text-sm mb-4">No run information found. Check the <strong>Package Files</strong> tab.</p>`;
+
+            if (parsed.detectors && parsed.detectors.length) {
+                const detColors = ['bg-green-100 text-green-800','bg-blue-100 text-blue-800','bg-purple-100 text-purple-800','bg-orange-100 text-orange-800','bg-pink-100 text-pink-800'];
+                infoHtml += `<div class="mt-2"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Targets / Dyes</span>
+                    <div class="flex flex-wrap gap-2 mt-1">${parsed.detectors.map((d,i) =>
+                        `<span class="px-2 py-0.5 rounded text-xs font-bold ${detColors[i%detColors.length]}">${escH(d.name)} <span class="font-normal opacity-70">/ ${escH(d.reporter)}</span></span>`).join('')}</div></div>`;
+            } else if (parsed.targets && parsed.targets.length) {
+                infoHtml += `<div class="mt-2"><span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Targets</span>
+                    <div class="flex flex-wrap gap-2 mt-1">${parsed.targets.map(t =>
+                        `<span class="px-2 py-0.5 bg-brand-blue/10 text-brand-blue rounded text-xs font-medium">${escH(t)}</span>`).join('')}</div></div>`;
+            }
+            pInfo.innerHTML = infoHtml;
+
+            // ── Panel 2: Plate Map ─────────────────────────────────────────────
+            const pMap = document.getElementById('run-panel-map');
+            const hasWellDetectors = Object.keys(parsed.wellDetectors || {}).length > 0;
+            const hasWells = (parsed.wells || []).length > 0;
+
+            if (!hasWellDetectors && !hasWells) {
+                pMap.innerHTML = '<p class="text-slate-400 text-sm">No plate layout data found in this file.</p>';
+            } else {
+                const ROWS = 'ABCDEFGH'.split(''), COLS = Array.from({length:12},(_,i)=>i+1);
+                const DET_COLORS = ['#22c55e','#3b82f6','#a855f7','#f97316','#ec4899','#06b6d4','#eab308'];
+                const detNames = (parsed.detectors||[]).map(d=>d.name);
+                const wellByPos = {}; (parsed.wells||[]).forEach(w => wellByPos[w.pos] = w);
+
+                const cellStyle = (pos) => {
+                    if (hasWellDetectors) {
+                        const dets = (parsed.wellDetectors[pos]||[]);
+                        if (!dets.length) return null;
+                        const di = detNames.indexOf(dets[0]);
+                        return di >= 0 ? {bg:`${DET_COLORS[di]}22`,border:DET_COLORS[di]} : {bg:'#f1f5f9',border:'#94a3b8'};
+                    }
+                    const w = wellByPos[pos]; if (!w) return null;
+                    const t = (w.task||'').toUpperCase();
+                    if (t.includes('POS')||t.includes('PC')||t==='STANDARD') return {bg:'#f0fdf4',border:'#86efac'};
+                    if (t.includes('NEG')||t.includes('NTC')||t.includes('NEC')) return {bg:'#fef2f2',border:'#fca5a5'};
+                    return {bg:'#eff6ff',border:'#93c5fd'};
+                };
+
+                let tbl = `<div class="overflow-x-auto"><table class="border-collapse text-sm"><thead><tr>
+                    <th class="p-1.5"></th>${COLS.map(c=>`<th class="p-1.5 font-bold text-slate-400 text-center min-w-[110px]">${c}</th>`).join('')}
+                </tr></thead><tbody>`;
+                ROWS.forEach(row => {
+                    tbl += `<tr><th class="p-1.5 font-bold text-slate-400 pr-3">${row}</th>`;
+                    COLS.forEach(col => {
+                        const pos = `${row}${col}`, style = cellStyle(pos);
+                        if (style) {
+                            const dets = (parsed.wellDetectors[pos]||[]);
+                            const w = wellByPos[pos];
+                            const sample = w ? w.sample : '';
+                            const dots = dets.map((d,i) => {
+                                const di = detNames.indexOf(d);
+                                const c = di >= 0 ? DET_COLORS[di] : '#94a3b8';
+                                return `<span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${c}" title="${escH(d)}"></span>`;
+                            }).join('');
+                            tbl += `<td class="p-1.5"><div class="border rounded px-2.5 py-2 leading-snug" style="background:${style.bg};border-color:${style.border}">
+                                ${sample
+                                    ? `<div class="font-bold truncate max-w-[102px] text-slate-700 text-[13px]" title="${escH(sample)} (${pos})">${escH(sample)}</div>`
+                                    : `<div class="text-slate-400 text-xs">${pos}</div>`}
+                                <div class="flex flex-wrap gap-1.5 mt-1.5">${dots}</div></div></td>`;
+                        } else {
+                            tbl += `<td class="p-1.5"><div class="border border-dashed border-slate-100 rounded px-2.5 py-2 text-slate-200 text-center text-xs">${pos}</div></td>`;
+                        }
+                    });
+                    tbl += '</tr>';
+                });
+                tbl += '</tbody></table></div>';
+                if (detNames.length) {
+                    tbl += `<div class="mt-3 flex flex-wrap gap-4 text-xs">
+                        ${detNames.map((d,i) => `<span class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full inline-block" style="background:${DET_COLORS[i%DET_COLORS.length]}"></span>
+                            ${escH(d)} / ${escH((parsed.detectors[i]||{}).reporter||'')}</span>`).join('')}</div>`;
+                } else {
+                    tbl += `<div class="mt-3 flex flex-wrap gap-4 text-xs">
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded border border-green-300 bg-green-50 inline-block"></span>Pos/Std</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded border border-red-300 bg-red-50 inline-block"></span>Neg/NTC</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded border border-blue-300 bg-blue-50 inline-block"></span>Sample</span></div>`;
+                }
+                pMap.innerHTML = tbl;
+            }
+
+            // ── Panel 3: Well Data ─────────────────────────────────────────────
+            const pData = document.getElementById('run-panel-data');
+            const hasCurves = Object.values(parsed.curves||{}).some(arr => arr.length > 0);
+            const wellsWithCt = (parsed.wells||[]).filter(w => w.cts && w.cts.length > 0);
+
+            let dataHtml = '';
+
+            // Ct results table (when available from analysis_result.txt)
+            if (wellsWithCt.length > 0) {
+                const allTargets = [...new Set(wellsWithCt.flatMap(w=>w.cts.map(c=>c.target)))].filter(Boolean);
+                const ctColor = (ct) => {
+                    const v = parseFloat(ct);
+                    if (isNaN(v) || v >= 40) return 'text-slate-400';
+                    if (v < 25) return 'text-green-700 font-bold';
+                    if (v < 35) return 'text-slate-700';
+                    return 'text-orange-600';
+                };
+                dataHtml += `<div class="mb-6 overflow-x-auto"><table class="w-full text-xs border-collapse">
+                    <thead><tr class="text-left border-b-2 border-slate-200">
+                        <th class="py-1.5 pr-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Well</th>
+                        <th class="py-1.5 pr-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Sample</th>
+                        ${allTargets.map(t=>`<th class="py-1.5 pr-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">${escH(t)}<br><span class="font-normal text-slate-400">Ct</span></th>`).join('')}
+                    </tr></thead><tbody>${wellsWithCt.map(w => {
+                        const ctByT = {}; w.cts.forEach(c=>ctByT[c.target]=c);
+                        return `<tr class="border-b border-slate-50 hover:bg-slate-50">
+                            <td class="py-1 pr-3 font-mono font-bold text-slate-500 text-[10px]">${escH(w.pos)}</td>
+                            <td class="py-1 pr-3 font-medium">${escH(w.sample||'')}</td>
+                            ${allTargets.map(t => {
+                                const c = ctByT[t];
+                                if (!c) return '<td class="py-1 pr-3 text-slate-300">—</td>';
+                                const ctV = parseFloat(c.ct), ctD = isNaN(ctV) ? (c.ct||'—') : ctV >= 40 ? 'Undetermined' : ctV.toFixed(2);
+                                return `<td class="py-1 pr-3 font-mono ${ctColor(c.ct)}">${ctD}</td>`;
+                            }).join('')}</tr>`;
+                    }).join('')}</tbody></table></div>`;
+            }
+
+            // Raw amplification sparklines (when curve data was loaded)
+            if (hasCurves) {
+                const DET_COLORS2 = ['#2563eb','#16a34a','#9333ea','#ea580c','#db2777'];
+                const ROWS2 = 'ABCDEFGH'.split(''), COLS2 = Array.from({length:12},(_,i)=>i+1);
+                dataHtml += `<details class="mt-2"><summary class="text-xs font-bold text-slate-500 cursor-pointer select-none mb-2">Raw Amplification Curves (fluorescence × cycle)</summary>`;
+                (parsed.detectors||[]).forEach((det, di) => {
+                    const color = DET_COLORS2[di % DET_COLORS2.length];
+                    dataHtml += `<div class="mb-5"><h4 class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full inline-block" style="background:${color}"></span>
+                        ${escH(det.name)} / ${escH(det.reporter)}</h4>
+                        <div class="overflow-x-auto"><table class="border-collapse"><thead><tr>
+                            <th class="p-0.5 text-[10px]"></th>${COLS2.map(c=>`<th class="p-0.5 text-[10px] font-bold text-slate-400 text-center w-14">${c}</th>`).join('')}
+                        </tr></thead><tbody>`;
+                    ROWS2.forEach(row => {
+                        dataHtml += `<tr><th class="p-0.5 text-[10px] font-bold text-slate-400 pr-1">${row}</th>`;
+                        COLS2.forEach(col => {
+                            const pos = `${row}${col}`, key = `${pos}:${det.name}`;
+                            const data = (parsed.curves||{})[key]||[];
+                            dataHtml += data.length > 0
+                                ? `<td class="p-0.5 text-center" title="${escH(pos)}">${buildSparkline(data, 52, 22, color)}</td>`
+                                : `<td class="p-0.5 text-center text-slate-200 text-[9px]">—</td>`;
+                        });
+                        dataHtml += '</tr>';
+                    });
+                    dataHtml += '</tbody></table></div></div>';
+                });
+                dataHtml += '</details>';
+            }
+
+            if (dataHtml) {
+                pData.innerHTML = dataHtml;
+            } else {
+                pData.innerHTML = `<p class="text-slate-400 text-sm">No amplification data found. This may be a raw file without computed results.</p>`;
+            }
+
+            // ── Panel 4: Package files ─────────────────────────────────────────
+            const pFiles = document.getElementById('run-panel-files');
+            const fileList = parsed.allFiles.map(f => {
+                const snippet = parsed.xmlSnippets?.[f];
+                return `<div class="border border-slate-100 rounded-lg overflow-hidden mb-1">
+                    <div class="py-1 px-3 font-mono text-xs text-slate-600 flex items-center justify-between gap-2 hover:bg-slate-50 cursor-pointer select-none"
+                         onclick="this.nextElementSibling.classList.toggle('hidden')">
+                        <span>${escH(f)}</span>
+                        ${snippet ? `<span class="text-[10px] text-brand-blue font-bold">XML ▾</span>` : ''}
+                    </div>
+                    ${snippet ? `<pre class="hidden p-3 bg-slate-900 text-green-300 text-[10px] font-mono overflow-x-auto max-h-64 whitespace-pre-wrap break-all">${escH(snippet)}</pre>` : ''}
+                </div>`;
+            }).join('');
+            pFiles.innerHTML = `<p class="text-xs text-slate-400 mb-3">${parsed.allFiles.length} file(s) in package — click any XML file to preview its raw content</p>${fileList}`;
+        }
+
+        function buildSparkline(data, width, height, color) {
+            if (!data || data.length < 2) return '';
+            const sorted = [...data].sort((a, b) => a.cycle - b.cycle);
+            const values = sorted.map(d => d.value);
+            const min = Math.min(...values), max = Math.max(...values), range = max - min || 1;
+            const pts = sorted.map((d, i) => {
+                const x = (i / (sorted.length - 1)) * width;
+                const y = height - ((d.value - min) / range) * (height - 2) - 1;
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(' ');
+            return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" class="inline-block align-middle"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+        }
+
+        function escH(s) {
+            return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+
 
         function deleteRule(idx) {
             state.assays[activeAssayId].rules.splice(idx, 1);
