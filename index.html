@@ -3873,11 +3873,12 @@
             const mixTargetRows = [];
             allAssays.forEach(a => {
                 const isQuant = a.general.assayMode === 'quant' ? 'TRUE' : 'FALSE';
+                const usePassiveDye = Object.values(a.targets || {}).some(t => t.isPassive) ? 'TRUE' : 'FALSE';
                 Object.values(a.targets || {}).forEach((t, idx) => {
                     mixTargetRows.push([
-                        a.name, isQuant, t.indicator || '', '', 'FALSE', '', '',
-                        t.name, idx + 1, 'false', '', 'false', '',
-                        t.threshold || '', '', '', '', '', '', 'TRUE', '', '', 0, ''
+                        a.name, isQuant, t.indicator || '', usePassiveDye, 'FALSE', '', '',
+                        t.name, idx + 1, t.isPassive ? 'TRUE' : 'FALSE', '', t.isIC ? 'TRUE' : 'FALSE', '',
+                        t.threshold || '', '', '', '', '', '', 'TRUE', t.fluorThreshold || '', '', 0, ''
                     ]);
                 });
             });
@@ -4931,6 +4932,13 @@
         window.addEventListener('mouseup', () => {
             isMouseDown = false;
         });
+
+        // Prevent scroll wheel from changing number input values
+        document.addEventListener('wheel', e => {
+            if (document.activeElement && document.activeElement.type === 'number') {
+                document.activeElement.blur();
+            }
+        }, { passive: true });
 
         // Boot
         window.onload = async () => {
