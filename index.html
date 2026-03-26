@@ -421,6 +421,12 @@
                                         placeholder="LIMS Code" oninput="captureGeneral(); updateOptionalIndicators()">
                                 </div>
                             </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Runs On Instruments</label>
+                                <div id="assigned-instruments-list" class="flex flex-wrap gap-2 min-h-[32px]">
+                                    <!-- Rendered by renderAssignedInstruments() -->
+                                </div>
+                            </div>
                         </details>
                     </div>
 
@@ -456,7 +462,7 @@
                                 </thead>
                                 <tbody id="curve-rows-body"></tbody>
                             </table>
-                            <button onclick="addCurveRow()" type="button" class="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Add Instrument</button>
+                            <button onclick="addCurveRow()" type="button" class="text-xs text-blue-600 hover:text-blue-800 font-medium">+ Add Curve Row</button>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -997,7 +1003,12 @@
                     <button id="run-tab-files" onclick="switchRunTab('files')" class="px-4 py-2 text-xs font-bold text-slate-400 border-b-2 border-transparent hover:text-slate-600 transition-all">Package Files</button>
                 </div>
                 <div id="run-panel-info"  class="p-5 overflow-y-auto flex-1"></div>
-                <div id="run-panel-map"   class="p-5 overflow-y-auto flex-1 hidden"></div>
+                <div id="run-panel-map"   class="flex-1 hidden flex overflow-hidden">
+                    <div id="run-map-table"  class="p-5 overflow-y-auto flex-1 min-w-0"></div>
+                    <div id="run-well-detail" class="w-80 shrink-0 border-l border-slate-100 p-5 overflow-y-auto bg-slate-50/50 flex flex-col">
+                        <p class="text-xs text-slate-400 italic text-center mt-8">Click a well to see details</p>
+                    </div>
+                </div>
                 <div id="run-panel-data"  class="p-5 overflow-y-auto flex-1 hidden"></div>
                 <div id="run-panel-files" class="p-5 overflow-y-auto flex-1 hidden"></div>
             </div>
@@ -1044,6 +1055,7 @@
                 general: {
                     assayMode: 'qual',
                     sampleType: [],
+                    assignedInstruments: [],
                     testCode: '',
                     group: '',
                     maxCycles: 45,
@@ -1051,7 +1063,7 @@
                     quantMode: 'stored',
                     units: 'copies/mL',
                     rounding: 'none',
-                    standardCurves: [{ instrument: '', slope: -3.3, intercept: 40, r2: 0.99 }]
+                    standardCurves: [{ instrumentId: '', slope: -3.3, intercept: 40, r2: 0.99 }]
                 },
                 targets: {},
                 lots: {},
@@ -1065,6 +1077,7 @@
             return {
                 id,
                 name,
+                instruments: [],
                 assays: {},
                 createdAt: new Date().toISOString()
             };
@@ -1775,8 +1788,8 @@
                 return {label: 'Draft', class: 'status-draft'};
             };
 
-            Object.values(state.clients).forEach(client => {
-                const isClientCollapsed = collapsedClients[client.id] === true;
+            Object.values(state.clients).sort((a, b) => a.name.localeCompare(b.name)).forEach(client => {
+                const isClientCollapsed = collapsedClients[client.id] !== false;
                 const clientCard = document.createElement('div');
                 clientCard.className = `mx-3 my-2 rounded-2xl border overflow-hidden ${state.activeClientId === client.id ? 'border-brand-blue/40 bg-brand-blue/5' : 'border-slate-200 bg-white'}`;
 
@@ -1797,7 +1810,7 @@
                             <button onclick="deleteClient('${client.id}', event)" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="Delete Client">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
-                            <button onclick="collapsedClients['${client.id}'] = !collapsedClients['${client.id}']; renderSidebar();" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-all" title="${isClientCollapsed ? 'Expand' : 'Collapse'}">
+                            <button onclick="collapsedClients['${client.id}'] = ${isClientCollapsed ? 'false' : 'true'}; renderSidebar();" class="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded transition-all" title="${isClientCollapsed ? 'Expand' : 'Collapse'}">
                                 <svg class="w-3.5 h-3.5 transition-transform ${isClientCollapsed ? '' : 'rotate-90'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                             </button>
                         </div>
@@ -1902,6 +1915,32 @@
                 const totalMatches = ungrouped.length + Object.values(grouped).reduce((s, a) => s + a.length, 0);
                 if (sidebarSearch && totalMatches === 0) return;
 
+                // ── Instruments section ───────────────────────────────────────
+                const instruments = client.instruments || [];
+                const instrSection = document.createElement('div');
+                instrSection.className = 'border-t border-slate-200 px-4 py-3 bg-slate-50/50';
+                const instrChips = instruments.length > 0
+                    ? instruments.map(instr =>
+                        `<span class="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-slate-200 rounded-full text-[10px] font-semibold text-slate-600 leading-snug">
+                            ${instr.name.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+                            <button onclick="removeClientInstrument('${client.id}','${instr.id}')" class="text-slate-300 hover:text-red-500 transition-colors ml-0.5" title="Remove">&#10005;</button>
+                        </span>`).join('')
+                    : '<span class="text-[10px] text-slate-300 italic">No instruments defined</span>';
+                instrSection.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Instruments</span>
+                    </div>
+                    <div class="flex flex-wrap gap-1.5 mb-2">${instrChips}</div>
+                    <div class="flex gap-1.5">
+                        <input type="text" id="inp-client-instr-${client.id}"
+                            class="flex-1 min-w-0 bg-white border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+                            placeholder="Add instrument name…"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();addClientInstrument('${client.id}');}">
+                        <button onclick="addClientInstrument('${client.id}')"
+                            class="px-2 py-1 bg-slate-100 hover:bg-brand-blue hover:text-white text-slate-500 text-[10px] font-bold rounded transition-all">ADD</button>
+                    </div>`;
+                clientCard.appendChild(instrSection);
+
                 list.appendChild(clientCard);
             });
 
@@ -1987,6 +2026,7 @@
                 g.sampleType = g.sampleType ? g.sampleType.split(',').map(s => s.trim()).filter(s => s !== "") : [];
             }
             renderSampleTypeTags();
+            renderAssignedInstruments();
 
             document.getElementById('inp-assay-name').value = state.assays[activeAssayId].name || '';
             document.getElementById('inp-test-code').value = g.testCode;
@@ -1998,8 +2038,10 @@
             document.getElementById('sel-rounding').value = g.rounding;
             // Migrate legacy single-curve format
             if (!g.standardCurves) {
-                g.standardCurves = [{ instrument: '', slope: g.slope ?? -3.3, intercept: g.intercept ?? 40, r2: g.r2 ?? 0.99 }];
+                g.standardCurves = [{ instrumentId: '', slope: g.slope ?? -3.3, intercept: g.intercept ?? 40, r2: g.r2 ?? 0.99 }];
             }
+            // Migrate old 'instrument' field to 'instrumentId' (string names become empty; user picks from dropdown)
+            g.standardCurves.forEach(sc => { if ('instrument' in sc && !('instrumentId' in sc)) { sc.instrumentId = ''; delete sc.instrument; } });
             renderCurveRows();
 
             setAssayMode(g.assayMode || 'qual');
@@ -2038,21 +2080,32 @@
             const tbody = document.getElementById('curve-rows-body');
             if (!tbody) return;
             const inputCls = 'w-full bg-slate-50/50 border border-slate-200 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500';
-            tbody.innerHTML = curves.map((c, i) => `
-                <tr>
-                    <td class="pr-2 pb-1"><input type="text" id="inp-curve-${i}-instrument" value="${(c.instrument||'').replace(/"/g,'&quot;')}" placeholder="(any)" class="${inputCls}" oninput="captureCurves()"></td>
+            const selectCls = inputCls + ' cursor-pointer';
+            const clientInstrs = getActiveClient()?.instruments || [];
+            tbody.innerHTML = curves.map((c, i) => {
+                // Support legacy 'instrument' string field
+                const selId = c.instrumentId || c.instrument || '';
+                const options = clientInstrs.map(instr =>
+                    `<option value="${instr.id}"${instr.id === selId ? ' selected' : ''}>${instr.name.replace(/"/g,'&quot;')}</option>`
+                ).join('');
+                const noInstrs = clientInstrs.length === 0
+                    ? `<option value="" disabled>— add instruments to client —</option>`
+                    : `<option value="">— select —</option>${options}`;
+                return `<tr>
+                    <td class="pr-2 pb-1"><select id="inp-curve-${i}-instrumentId" class="${selectCls}" onchange="captureCurves()">${!clientInstrs.length ? noInstrs : `<option value="">— select —</option>${options}`}</select></td>
                     <td class="pr-2 pb-1"><input type="number" id="inp-curve-${i}-slope" value="${c.slope !== '' && c.slope !== undefined ? c.slope : ''}" class="${inputCls}" oninput="captureCurves()"></td>
                     <td class="pr-2 pb-1"><input type="number" id="inp-curve-${i}-intercept" value="${c.intercept !== '' && c.intercept !== undefined ? c.intercept : ''}" class="${inputCls}" oninput="captureCurves()"></td>
                     <td class="pr-2 pb-1"><input type="number" id="inp-curve-${i}-r2" value="${c.r2 !== '' && c.r2 !== undefined ? c.r2 : ''}" placeholder="0.99" class="${inputCls}" oninput="captureCurves()"></td>
                     <td class="pb-1">${curves.length > 1 ? `<button onclick="removeCurveRow(${i})" type="button" class="text-slate-400 hover:text-red-500 text-sm leading-none">&times;</button>` : ''}</td>
-                </tr>`).join('');
+                </tr>`;
+            }).join('');
         }
 
         function captureCurves() {
             const g = state.assays[activeAssayId].general;
             const n = (g.standardCurves || []).length;
             g.standardCurves = Array.from({length: n}, (_, i) => ({
-                instrument: (document.getElementById(`inp-curve-${i}-instrument`)?.value || '').trim(),
+                instrumentId: (document.getElementById(`inp-curve-${i}-instrumentId`)?.value || '').trim(),
                 slope: document.getElementById(`inp-curve-${i}-slope`)?.value,
                 intercept: document.getElementById(`inp-curve-${i}-intercept`)?.value,
                 r2: document.getElementById(`inp-curve-${i}-r2`)?.value
@@ -2063,7 +2116,7 @@
         function addCurveRow() {
             const g = state.assays[activeAssayId].general;
             if (!g.standardCurves) g.standardCurves = [];
-            g.standardCurves.push({ instrument: '', slope: '', intercept: '', r2: '' });
+            g.standardCurves.push({ instrumentId: '', slope: '', intercept: '', r2: '' });
             renderCurveRows();
             saveState();
         }
@@ -2158,6 +2211,72 @@
         document.addEventListener('click', (e) => {
             if (!document.getElementById('group-combobox')?.contains(e.target)) closeGroupDropdown();
         });
+
+        // ── Client Instrument Management ──────────────────────────────────────
+        function addClientInstrument(clientId) {
+            const inp = document.getElementById(`inp-client-instr-${clientId}`);
+            const val = (inp?.value || '').trim();
+            if (!val) return;
+            const client = state.clients[clientId];
+            if (!client) return;
+            if (!client.instruments) client.instruments = [];
+            if (client.instruments.some(i => i.name.toLowerCase() === val.toLowerCase())) { inp.value = ''; return; }
+            const id = 'instr_' + Math.random().toString(36).substr(2, 6);
+            client.instruments.push({ id, name: val });
+            saveState();
+            renderSidebar();
+            if (clientId === state.activeClientId && activeAssayId) renderAssignedInstruments();
+        }
+
+        function removeClientInstrument(clientId, instrId) {
+            const client = state.clients[clientId];
+            if (!client) return;
+            client.instruments = (client.instruments || []).filter(i => i.id !== instrId);
+            // Clean up all assays in this client
+            Object.values(client.assays || {}).forEach(a => {
+                if (a.general?.assignedInstruments) {
+                    a.general.assignedInstruments = a.general.assignedInstruments.filter(id => id !== instrId);
+                }
+            });
+            saveState();
+            renderSidebar();
+            if (clientId === state.activeClientId && activeAssayId) renderAssignedInstruments();
+        }
+
+        // ── Assay Assigned Instruments ─────────────────────────────────────────
+        function toggleAssignedInstrument(instrId) {
+            const g = state.assays[activeAssayId].general;
+            if (!g.assignedInstruments) g.assignedInstruments = [];
+            const idx = g.assignedInstruments.indexOf(instrId);
+            if (idx === -1) g.assignedInstruments.push(instrId);
+            else g.assignedInstruments.splice(idx, 1);
+            saveState();
+            renderAssignedInstruments();
+        }
+
+        function renderAssignedInstruments() {
+            const container = document.getElementById('assigned-instruments-list');
+            if (!container) return;
+            const client = getActiveClient();
+            const instruments = client?.instruments || [];
+            const g = state.assays[activeAssayId]?.general;
+            if (!g) return;
+            const assigned = g.assignedInstruments || [];
+
+            if (instruments.length === 0) {
+                container.innerHTML = '<span class="text-[10px] text-slate-400 italic">Add instruments to this client in the sidebar first.</span>';
+                return;
+            }
+            container.innerHTML = instruments.map(instr => {
+                const isA = assigned.includes(instr.id);
+                return `<button type="button" onclick="toggleAssignedInstrument('${instr.id}')"
+                    class="px-3 py-1 rounded-full text-xs font-semibold border transition-all ${isA
+                        ? 'bg-teal-500/10 text-teal-700 border-teal-500/20 hover:bg-teal-600 hover:text-white'
+                        : 'bg-slate-50 text-slate-400 border-slate-200 hover:border-slate-300 hover:text-slate-600'}">
+                    ${isA ? '&#10003; ' : ''}${instr.name.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+                </button>`;
+            }).join('');
+        }
 
         function addSampleType() {
             const sel = document.getElementById('sel-sample-type');
@@ -2450,12 +2569,13 @@
                         controlsDiv.innerHTML = '<p class="text-[10px] text-slate-400 italic">No controls in this lot. Click the button below to add one.</p>';
                     } else {
                         Object.entries(controls).forEach(([cid, c]) => {
+                            const isNegCtrl = ['NC','NEC','NTC'].includes(c.type);
                             const controlRow = document.createElement('div');
                             controlRow.className = "bg-slate-50/50 border border-slate-100 rounded-lg p-4 flex flex-wrap gap-3 items-end";
                             controlRow.innerHTML = `
                                 <div class="w-28">
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Type</label>
-                                    <select class="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" onchange="updateControl('${lotId}', '${cid}', 'type', this.value)">
+                                    <select class="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" onchange="updateControl('${lotId}', '${cid}', 'type', this.value); renderControls()">
                                         <option ${c.type === 'PC' ? 'selected' : ''}>PC</option>
                                         <option ${c.type === 'NC' ? 'selected' : ''}>NC</option>
                                         <option ${c.type === 'NEC' ? 'selected' : ''}>NEC</option>
@@ -2468,6 +2588,13 @@
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Control Identifier</label>
                                     <input type="text" class="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="As per instrument runfile" value="${escapeHtml(c.runfileLabel || '')}" oninput="updateControl('${lotId}', '${cid}', 'runfileLabel', this.value)">
                                 </div>
+                                ${isNegCtrl ? `
+                                <div class="flex-1 min-w-[140px]">
+                                    <div class="flex items-center gap-1.5 h-8 px-3 py-1 rounded-md bg-slate-100 border border-slate-200">
+                                        <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                        <span class="text-[10px] text-slate-400 italic">No Westgard stats for negative controls</span>
+                                    </div>
+                                </div>` : `
                                 <div class="w-20">
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Mean (Ct)</label>
                                     <input type="number" class="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" value="${c.mean}" oninput="updateControl('${lotId}', '${cid}', 'mean', this.value)">
@@ -2475,7 +2602,7 @@
                                 <div class="w-16">
                                     <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">SD</label>
                                     <input type="number" class="w-full bg-white border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" value="${c.sd}" oninput="updateControl('${lotId}', '${cid}', 'sd', this.value)">
-                                </div>
+                                </div>`}
                                 <button onclick="removeControl('${lotId}', '${cid}')" class="p-2 text-slate-400 hover:text-red-500 transition-colors">✕</button>
                             `;
                             controlsDiv.appendChild(controlRow);
@@ -3344,6 +3471,7 @@
         }
 
         function renderRunFile(parsed, filename) {
+            window._runParsed = parsed;
             document.getElementById('run-file-dropzone').classList.add('hidden');
             const content = document.getElementById('run-file-content');
             content.classList.remove('hidden');
@@ -3372,12 +3500,32 @@
             pInfo.innerHTML = infoHtml;
 
             // ── Panel 2: Plate Map ─────────────────────────────────────────────
-            const pMap = document.getElementById('run-panel-map');
-            const hasWellDetectors = Object.keys(parsed.wellDetectors || {}).length > 0;
+            const pMapTable = document.getElementById('run-map-table');
+            const pWellDetail = document.getElementById('run-well-detail');
             const hasWells = (parsed.wells || []).length > 0;
 
+            // Normalise wellDetectors: if the parser didn't fill it (QS-EDS path),
+            // build it from wells[].cts so both formats get detector-based colours.
+            if (Object.keys(parsed.wellDetectors || {}).length === 0 && hasWells) {
+                parsed.wellDetectors = {};
+                const ctsTargetOrder = [];
+                parsed.wells.forEach(w => {
+                    if (w.cts && w.cts.length > 0) {
+                        parsed.wellDetectors[w.pos] = w.cts.map(c => c.target).filter(Boolean);
+                        w.cts.forEach(c => { if (c.target && !ctsTargetOrder.includes(c.target)) ctsTargetOrder.push(c.target); });
+                    }
+                });
+                // Ensure detectors list is populated so the legend can use detector colours.
+                // Priority: existing detectors → cts targets → parsed.targets
+                if (!(parsed.detectors||[]).length) {
+                    const src = ctsTargetOrder.length ? ctsTargetOrder : (parsed.targets||[]);
+                    if (src.length) parsed.detectors = src.map(t => ({name: t, reporter: ''}));
+                }
+            }
+            const hasWellDetectors = Object.keys(parsed.wellDetectors || {}).length > 0;
+
             if (!hasWellDetectors && !hasWells) {
-                pMap.innerHTML = '<p class="text-slate-400 text-sm">No plate layout data found in this file.</p>';
+                pMapTable.innerHTML = '<p class="text-slate-400 text-sm">No plate layout data found in this file.</p>';
             } else {
                 const ROWS = 'ABCDEFGH'.split(''), COLS = Array.from({length:12},(_,i)=>i+1);
                 const DET_COLORS = ['#22c55e','#3b82f6','#a855f7','#f97316','#ec4899','#06b6d4','#eab308'];
@@ -3385,14 +3533,15 @@
                 const wellByPos = {}; (parsed.wells||[]).forEach(w => wellByPos[w.pos] = w);
 
                 const cellStyle = (pos) => {
-                    if (hasWellDetectors) {
-                        const dets = (parsed.wellDetectors[pos]||[]);
-                        if (!dets.length) return null;
+                    const dets = (parsed.wellDetectors[pos]||[]);
+                    if (dets.length) {
                         const di = detNames.indexOf(dets[0]);
                         return di >= 0 ? {bg:`${DET_COLORS[di]}22`,border:DET_COLORS[di]} : {bg:'#f1f5f9',border:'#94a3b8'};
                     }
+                    // No detector data — try task-based colour for legacy files
                     const w = wellByPos[pos]; if (!w) return null;
                     const t = (w.task||'').toUpperCase();
+                    if (!t && !w.sample) return null;
                     if (t.includes('POS')||t.includes('PC')||t==='STANDARD') return {bg:'#f0fdf4',border:'#86efac'};
                     if (t.includes('NEG')||t.includes('NTC')||t.includes('NEC')) return {bg:'#fef2f2',border:'#fca5a5'};
                     return {bg:'#eff6ff',border:'#93c5fd'};
@@ -3414,13 +3563,13 @@
                                 const c = di >= 0 ? DET_COLORS[di] : '#94a3b8';
                                 return `<span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${c}" title="${escH(d)}"></span>`;
                             }).join('');
-                            tbl += `<td class="p-1.5"><div class="border rounded px-2.5 py-2 leading-snug" style="background:${style.bg};border-color:${style.border}">
+                            tbl += `<td class="p-1.5" onclick="selectRunWell('${pos}')"><div id="runwell-${pos}" class="border rounded px-2.5 py-2 leading-snug cursor-pointer hover:ring-2 hover:ring-blue-400 hover:shadow-sm transition-all" style="background:${style.bg};border-color:${style.border}">
                                 ${sample
                                     ? `<div class="font-bold truncate max-w-[102px] text-slate-700 text-[13px]" title="${escH(sample)} (${pos})">${escH(sample)}</div>`
                                     : `<div class="text-slate-400 text-xs">${pos}</div>`}
                                 <div class="flex flex-wrap gap-1.5 mt-1.5">${dots}</div></div></td>`;
                         } else {
-                            tbl += `<td class="p-1.5"><div class="border border-dashed border-slate-100 rounded px-2.5 py-2 text-slate-200 text-center text-xs">${pos}</div></td>`;
+                            tbl += `<td class="p-1.5" onclick="selectRunWell('${pos}')"><div id="runwell-${pos}" class="border border-dashed border-slate-100 rounded px-2.5 py-2 text-slate-200 text-center text-xs cursor-pointer hover:border-slate-300 transition-all">${pos}</div></td>`;
                         }
                     });
                     tbl += '</tr>';
@@ -3428,16 +3577,18 @@
                 tbl += '</tbody></table></div>';
                 if (detNames.length) {
                     tbl += `<div class="mt-3 flex flex-wrap gap-4 text-xs">
-                        ${detNames.map((d,i) => `<span class="flex items-center gap-1.5">
-                            <span class="w-3 h-3 rounded-full inline-block" style="background:${DET_COLORS[i%DET_COLORS.length]}"></span>
-                            ${escH(d)} / ${escH((parsed.detectors[i]||{}).reporter||'')}</span>`).join('')}</div>`;
+                        ${detNames.map((d,i) => {
+                            const rep = (parsed.detectors[i]||{}).reporter||'';
+                            return `<span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full inline-block" style="background:${DET_COLORS[i%DET_COLORS.length]}"></span>${escH(d)}${rep ? ' <span class="text-slate-400">/ ' + escH(rep) + '</span>' : ''}</span>`;
+                        }).join('')}</div>`;
                 } else {
-                    tbl += `<div class="mt-3 flex flex-wrap gap-4 text-xs">
+                    tbl += `<div class="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
                         <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded border border-green-300 bg-green-50 inline-block"></span>Pos/Std</span>
                         <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded border border-red-300 bg-red-50 inline-block"></span>Neg/NTC</span>
                         <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded border border-blue-300 bg-blue-50 inline-block"></span>Sample</span></div>`;
                 }
-                pMap.innerHTML = tbl;
+                pMapTable.innerHTML = tbl;
+                pWellDetail.innerHTML = '<p class="text-xs text-slate-400 italic text-center mt-8">Click a well to see details</p>';
             }
 
             // ── Panel 3: Well Data ─────────────────────────────────────────────
@@ -3540,6 +3691,72 @@
             return `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" class="inline-block align-middle"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
         }
 
+        function selectRunWell(pos) {
+            const parsed = window._runParsed;
+            if (!parsed) return;
+
+            // Remove previous highlight
+            document.querySelectorAll('[id^="runwell-"]').forEach(el => {
+                el.classList.remove('ring-2','ring-blue-500','shadow-md');
+            });
+            // Highlight selected well
+            const wellEl = document.getElementById(`runwell-${pos}`);
+            if (wellEl) wellEl.classList.add('ring-2','ring-blue-500','shadow-md');
+
+            const DET_COLORS = ['#22c55e','#3b82f6','#a855f7','#f97316','#ec4899','#06b6d4','#eab308'];
+            const detNames = (parsed.detectors||[]).map(d=>d.name);
+            const w = (parsed.wells||[]).find(x => x.pos === pos);
+            const dets = (parsed.wellDetectors[pos]||[]);
+            const detail = document.getElementById('run-well-detail');
+            if (!detail) return;
+
+            const ctColor = (ct) => {
+                const v = parseFloat(ct);
+                if (isNaN(v) || v >= 40) return 'text-slate-400';
+                if (v < 25) return 'text-green-600 font-bold';
+                if (v < 35) return 'text-slate-700';
+                return 'text-orange-500';
+            };
+
+            let curves = '';
+            if (dets.length) {
+                dets.forEach(det => {
+                    const di = detNames.indexOf(det);
+                    const col = di >= 0 ? DET_COLORS[di % DET_COLORS.length] : '#94a3b8';
+                    const data = (parsed.curves||{})[`${pos}:${det}`] || [];
+                    const ct = w ? (w.cts||[]).find(c => c.target === det) : null;
+                    const ctVal = ct ? ct.ct : null;
+                    const ctV = parseFloat(ctVal);
+                    const ctDisplay = (!ctVal || isNaN(ctV) || ctV >= 40) ? 'Undetermined' : ctV.toFixed(2);
+                    const reporter = (parsed.detectors||[]).find(d => d.name === det);
+                    const reporterLabel = reporter && reporter.reporter ? ` / ${escH(reporter.reporter)}` : '';
+                    curves += `<div class="mb-4 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+                        <div class="flex justify-between items-baseline mb-1.5">
+                            <span class="text-xs font-bold leading-none" style="color:${col}">${escH(det)}<span class="font-normal opacity-60 text-[10px]">${reporterLabel}</span></span>
+                            <span class="font-mono text-sm ${ctColor(ctVal)}">${ctDisplay}</span>
+                        </div>
+                        ${data.length >= 2
+                            ? `<div>${buildSparkline(data, 260, 64, col)}</div>`
+                            : '<div class="text-[10px] text-slate-300 italic">No curve data</div>'}
+                    </div>`;
+                });
+            }
+
+            const taskBadge = w && w.task
+                ? `<span class="inline-block text-[10px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 mb-3">${escH(w.task)}</span>`
+                : '';
+
+            detail.innerHTML = `
+                <div class="mb-4 pb-3 border-b border-slate-200">
+                    <div class="text-2xl font-black text-slate-700 leading-none mb-1">${escH(pos)}</div>
+                    <div class="text-sm font-semibold text-slate-600">${escH((w && w.sample) || '')}</div>
+                    ${taskBadge}
+                </div>
+                ${dets.length
+                    ? `<div>${curves}</div>`
+                    : '<p class="text-xs text-slate-400 italic">No detector data for this well.</p>'}`;
+        }
+
         function escH(s) {
             return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
@@ -3616,8 +3833,14 @@
                 Object.values(ctrlLabelMap).map(e => [e.name, roleTypeMap[e.type] || e.type, e.mixes.join(' | '), 'Y', '', e.runfileLabel])
             );
 
-            // 5. Cross Contamination Limits
-            headerOnly('Cross Contamination Limits', ['MIX', 'TARGET', 'DYE', 'QUANT OR CT', 'POTENTIAL CONTAMINATED', 'POTENTIAL CONTAMINATING']);
+            // 5. Cross Contamination Limits — default values per assay/target
+            const ccRows = [];
+            allAssays.forEach(a => {
+                Object.values(a.targets || {}).forEach(t => {
+                    if (!t.isPassive) ccRows.push([a.name, t.name, t.indicator || '', 'Ct', 35, 23]);
+                });
+            });
+            addSheet('Cross Contamination Limits', ['MIX', 'TARGET', 'DYE', 'QUANT OR CT', 'POTENTIAL CONTAMINATED', 'POTENTIAL CONTAMINATING'], ccRows);
 
             // 6. Curve Control Limits
             headerOnly('Curve Control Limits', ['MIX', 'TARGET', 'DYE', 'SAMPLE ROLE', 'LOWER BOUND CT', 'UPPER BOUND CT']);
@@ -3663,28 +3886,28 @@
                 mixTargetRows
             );
 
-            // 16. QIR - Quantification settings (one row per target for quant assays)
+            // 16. QIR - Quantification settings (one row per target × instrument for quant assays)
             const qirRows = [];
+            const clientInstrMap = Object.fromEntries((activeClient.instruments || []).map(i => [i.id, i.name]));
             allAssays.filter(a => a.general.assayMode === 'quant').forEach(a => {
                 const curves = (a.general.standardCurves && a.general.standardCurves.length > 0)
                     ? a.general.standardCurves
-                    : [{ instrument: '', slope: a.general.slope ?? '', intercept: a.general.intercept ?? '', r2: a.general.r2 ?? '' }];
+                    : [{ slope: a.general.slope ?? '', intercept: a.general.intercept ?? '', r2: a.general.r2 ?? '' }];
                 Object.values(a.targets || {}).forEach(t => {
-                    curves.forEach(c => {
+                    curves.forEach(sc => {
                         qirRows.push([
                             t.name,
-                            c.instrument || '',
-                            c.slope !== undefined ? c.slope : '',
-                            c.intercept !== undefined ? c.intercept : '',
-                            '', '', '',
-                            c.r2 !== undefined ? c.r2 : '',
+                            sc.slope !== undefined ? sc.slope : '',
+                            sc.intercept !== undefined ? sc.intercept : '',
+                            '', '', '', '',
+                            sc.r2 !== undefined ? sc.r2 : '',
                             ''
                         ]);
                     });
                 });
             });
             addSheet('QIR -  Quantification settings',
-                ['TARGET', 'INSTRUMENT', 'SLOPE', 'INTERCEPT', 'MIN SLOPE', 'MAX SLOPE', 'MIN EFFICIENCY', 'MAX EFFICIENCY', 'MIN R2', 'MIN CONTROLS'],
+                ['TARGET', 'SLOPE', 'INTERCEPT', 'MIN SLOPE', 'MAX SLOPE', 'MIN EFFICIENCY', 'MAX EFFICIENCY', 'MIN R2', 'MIN CONTROLS'],
                 qirRows
             );
 
@@ -3728,20 +3951,37 @@
             });
             addSheet('Test Codes', ['TEST CODE', 'MIX', 'SPECIMEN TYPE'], testCodeRows);
 
-            // 21. Thermocyclers
-            addSheet('Thermocyclers', ['Thermocycler Model', 'Thermocycler Instrument', 'Thermocycler Plate Size'], [[1, 'default_instrument', 96]]);
+            // 21. Thermocyclers — one row per instrument defined at the client level
+            const tcRows = [];
+            (activeClient.instruments || []).forEach((instr, idx) => {
+                tcRows.push([idx + 1, instr.name, 96]);
+            });
+            if (!tcRows.length) tcRows.push([1, 'default_instrument', 96]);
+            addSheet('Thermocyclers', ['Thermocycler Model', 'Thermocycler Instrument', 'Thermocycler Plate Size'], tcRows);
 
-            // 22. Westgard Limits
+            // 22. Westgard Limits — one row per (lot, control, target)
             const wgRows = [];
             allAssays.forEach(a => {
+                const targetsArr = Object.values(a.targets || {});
                 Object.values(a.lots || {}).forEach(lot => {
                     Object.values(lot.controls || {}).forEach(c => {
-                        wgRows.push([
-                            '', a.name, '', c.runfileLabel,
-                            lot.lotNumber || '', lot.effectiveDate || '',
-                            'default_model', 'default_instrument',
-                            c.mean || '', c.sd || '', 'Ct'
-                        ]);
+                        if (targetsArr.length > 0) {
+                            targetsArr.forEach(t => {
+                                wgRows.push([
+                                    t.name, a.name, t.indicator || '', c.runfileLabel,
+                                    lot.lotNumber || '', lot.effectiveDate || '',
+                                    'default_model', 'default_instrument',
+                                    c.mean || '', c.sd || '', 'Ct'
+                                ]);
+                            });
+                        } else {
+                            wgRows.push([
+                                '', a.name, '', c.runfileLabel,
+                                lot.lotNumber || '', lot.effectiveDate || '',
+                                'default_model', 'default_instrument',
+                                c.mean || '', c.sd || '', 'Ct'
+                            ]);
+                        }
                     });
                 });
             });
